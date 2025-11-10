@@ -38,8 +38,6 @@ const DEFAULT_DESIGN =
     accentColor: '#2563eb'
   };
 
-const PDF_EXPORT_WIDTH = 1280;
-const PDF_EXPORT_HEIGHT = 720;
 const TEXT_TOOLBAR_HALF_WIDTH = 200;
 const TEXT_TOOLBAR_VERTICAL_OFFSET = 70;
 const MIN_TEXT_WIDTH = 120;
