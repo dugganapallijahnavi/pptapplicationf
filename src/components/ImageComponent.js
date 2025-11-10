@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import './ImageComponent.css';
 
 const ImageComponent = ({ 
@@ -12,6 +12,18 @@ const ImageComponent = ({
   const [imageData, setImageData] = useState(element.imageData || null);
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef(null);
+
+  const imageTransformStyle = useMemo(() => {
+    const flipHorizontal = element?.flipHorizontal ? -1 : 1;
+    const flipVertical = element?.flipVertical ? -1 : 1;
+    if (flipHorizontal === 1 && flipVertical === 1) {
+      return undefined;
+    }
+    return {
+      transform: `scale(${flipHorizontal}, ${flipVertical})`,
+      transformOrigin: 'center center'
+    };
+  }, [element?.flipHorizontal, element?.flipVertical]);
 
   useEffect(() => {
     setImageData(element.imageData || null);
@@ -101,7 +113,9 @@ const ImageComponent = ({
                   <img 
                     src={imageData.src} 
                     alt={imageData.name}
-                    className="preview-image"
+                    className="slide-image"
+                    draggable={false}
+                    style={imageTransformStyle}
                   />
                   <div className="image-info">
                     <p><strong>Name:</strong> {imageData.name}</p>
@@ -135,18 +149,6 @@ const ImageComponent = ({
 
   return (
     <div className="image-wrapper">
-      {showDeleteButton && onDelete && (
-        <button
-          className="image-delete-button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          Delete
-        </button>
-      )}
       <div className="image-element">
         {imageData ? (
           <div className="image-container">
@@ -155,6 +157,7 @@ const ImageComponent = ({
               alt={imageData.name}
               className="slide-image"
               draggable={false}
+              style={imageTransformStyle}
             />
           </div>
         ) : (
@@ -178,6 +181,8 @@ export default React.memo(ImageComponent, (prevProps, nextProps) => {
     prevProps.element?.src === nextProps.element?.src &&
     prevProps.element?.width === nextProps.element?.width &&
     prevProps.element?.height === nextProps.element?.height &&
+    prevProps.element?.flipHorizontal === nextProps.element?.flipHorizontal &&
+    prevProps.element?.flipVertical === nextProps.element?.flipVertical &&
     prevProps.isEditing === nextProps.isEditing &&
     prevProps.showDeleteButton === nextProps.showDeleteButton
   );

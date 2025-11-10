@@ -15,6 +15,18 @@ const DEFAULT_SERIES_COLORS = [
   '#0EA5E9'
 ];
 
+const TEXT_BOX_PADDING = {
+  top: 10,
+  right: 14,
+  bottom: 10,
+  left: 14
+};
+
+const pxToPoints = (value) => {
+  const numeric = Number(value) || 0;
+  return Number.isFinite(numeric) ? Number((numeric * 0.75).toFixed(2)) : 0;
+};
+
 const pxToInches = (value, axis = 'x') => {
   const numeric = Number(value) || 0;
   const base = axis === 'x' ? CANVAS_WIDTH : CANVAS_HEIGHT;
@@ -82,7 +94,15 @@ const getTextOptions = (item) => {
     bold: Boolean(item.bold || (item.fontWeight && Number(item.fontWeight) >= 600)),
     italic: Boolean(item.italic),
     underline: Boolean(item.underline),
-    lineSpacingMultiple: 1.2
+    lineSpacingMultiple: 1.2,
+    valign: (item.verticalAlign || 'top').toLowerCase(),
+    autoFit: item.autoFit ?? false,
+    margin: [
+      pxToPoints(TEXT_BOX_PADDING.top),
+      pxToPoints(TEXT_BOX_PADDING.right),
+      pxToPoints(TEXT_BOX_PADDING.bottom),
+      pxToPoints(TEXT_BOX_PADDING.left)
+    ]
   };
 };
 
@@ -284,9 +304,15 @@ export const exportSlidesAsPptx = async (slides, fileName) => {
   const pptx = new PptxGenJS();
 
   (slides || []).forEach((slide) => {
+    const backgroundColor = normalizeHex(getSlideBackground(slide));
     const pptSlide = pptx.addSlide({
-      bkgd: normalizeHex(getSlideBackground(slide))
+      bkgd: backgroundColor
     });
+
+    // Explicitly set background as some pptx themes ignore the addSlide option alone
+    pptSlide.background = {
+      color: backgroundColor
+    };
     addTextElements(pptSlide, slide);
     addShapeElements(pptx, pptSlide, slide);
     addImageElements(pptSlide, slide);

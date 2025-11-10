@@ -4,6 +4,7 @@ import './TableComponent.css';
 const TableComponent = ({ 
   element, 
   onUpdate, 
+  onDelete,
   isSelected = false
 }) => {
   const [editingCell, setEditingCell] = useState(null);
@@ -279,6 +280,20 @@ const TableComponent = ({
 
   return (
     <div className="table-component-wrapper">
+      {isSelected && typeof onDelete === 'function' && (
+        <button
+          type="button"
+          className="table-floating-delete"
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete(element.id);
+          }}
+          aria-label="Delete table"
+        >
+          Delete
+        </button>
+      )}
       <div 
         className={`table-container ${isSelected ? 'selected' : ''}`}
         style={{

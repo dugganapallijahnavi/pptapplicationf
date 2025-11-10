@@ -57,3 +57,42 @@ export const THEME_PRESETS = [
     swatchAccent: '#f59e0b'
   }
 ];
+
+export const DESIGN_PRESETS = [
+  {
+    id: 'classicLight',
+    name: 'Classic Light',
+    description: 'Clean white canvas with soft gray accents',
+    background: '#ffffff',
+    textColor: '#1f2937',
+    accentColor: '#94a3b8',
+    preview: ['#ffffff', '#e2e8f0']
+  },
+  {
+    id: 'midnightSky',
+    name: 'Midnight Sky',
+    description: 'Deep navy base with soft teal highlights',
+    background: '#0f172a',
+    textColor: '#e2e8f0',
+    accentColor: '#38bdf8',
+    preview: ['#0f172a', '#38bdf8']
+  },
+  {
+    id: 'sunriseGlow',
+    name: 'Sunrise Glow',
+    description: 'Warm sunrise tones for inviting storytelling',
+    background: '#fef3c7',
+    textColor: '#78350f',
+    accentColor: '#f97316',
+    preview: ['#fef3c7', '#f97316']
+  },
+  {
+    id: 'forestFresh',
+    name: 'Forest Fresh',
+    description: 'Verdant greens grounded with deep spruce text',
+    background: '#f0fdf4',
+    textColor: '#064e3b',
+    accentColor: '#10b981',
+    preview: ['#f0fdf4', '#10b981']
+  }
+];

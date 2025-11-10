@@ -15,6 +15,7 @@ const ChartToolbar = ({
   onChangeType,
   onEditData,
   onDelete,
+  onDuplicate,
   onDismiss
 }) => {
   const [chartType, setChartType] = useState('bar');
@@ -48,7 +49,7 @@ const ChartToolbar = ({
 
   const handleMouseLeave = (event) => {
     const next = event.relatedTarget;
-    if (next && next.closest('.chart-toolbar-wrapper')) {
+    if (next && typeof next.closest === 'function' && next.closest('.chart-toolbar-wrapper')) {
       return;
     }
     onDismiss?.();
@@ -89,6 +90,19 @@ const ChartToolbar = ({
           onMouseDown={(event) => event.stopPropagation()}
         >
           Edit Data
+        </button>
+
+        <button
+          type="button"
+          className="chart-toolbar-button duplicate"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDuplicate?.(element.id);
+          }}
+          onMouseDown={(event) => event.stopPropagation()}
+          title="Duplicate"
+        >
+          ⧉
         </button>
 
         <button

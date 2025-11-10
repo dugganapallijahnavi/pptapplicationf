@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './TextToolbar.css';
 
 const STYLE_PRESETS = [
@@ -111,9 +111,13 @@ const TextToolbar = ({
   const [fontSize, setFontSize] = useState(20);
   const [fontFamily, setFontFamily] = useState(FONT_OPTIONS[0].value);
   const [textColor, setTextColor] = useState(DEFAULT_COLOR);
+  const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
+  const [isAlignmentMenuOpen, setIsAlignmentMenuOpen] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : DEFAULT_VIEWPORT_WIDTH
   );
+  const styleMenuRef = useRef(null);
+  const alignmentMenuRef = useRef(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -139,6 +143,11 @@ const TextToolbar = ({
     (key) => getResponsivePreset(key, viewportWidth),
     [viewportWidth]
   );
+
+  const closeMenus = useCallback(() => {
+    setIsStyleMenuOpen(false);
+    setIsAlignmentMenuOpen(false);
+  }, []);
 
   const applyPreset = useCallback(
     (key) => {
@@ -224,10 +233,12 @@ const TextToolbar = ({
   }, [position.x, position.y]);
 
   const handleHeadingChange = (event) => {
+    closeMenus();
     applyPreset(event.target.value);
   };
 
   const handleFontSizeChange = (value) => {
+    closeMenus();
     const numeric = Math.max(8, Math.min(200, Number(value) || fontSize));
     setFontSize(numeric);
     setPresetKey('custom');
@@ -242,6 +253,7 @@ const TextToolbar = ({
   };
 
   const handleFontFamilyChange = (value) => {
+    closeMenus();
     setFontFamily(value);
     setPresetKey('custom');
     
@@ -255,6 +267,7 @@ const TextToolbar = ({
   };
 
   const applyColor = (hex) => {
+    closeMenus();
     const formatted = toHex(hex);
     setTextColor(formatted);
     setPresetKey('custom');
@@ -280,6 +293,8 @@ const TextToolbar = ({
       return;
     }
     
+    setIsStyleMenuOpen(false);
+
     // If editor is available and has selection, apply bold to selected text
     if (editor && !editor.state.selection.empty) {
       editor.chain().focus().toggleBold().run();
@@ -298,7 +313,9 @@ const TextToolbar = ({
     if (!element) {
       return;
     }
-    
+
+    setIsStyleMenuOpen(false);
+
     // If editor is available and has selection, apply italic to selected text
     if (editor && !editor.state.selection.empty) {
       editor.chain().focus().toggleItalic().run();
@@ -315,7 +332,9 @@ const TextToolbar = ({
     if (!element) {
       return;
     }
-    
+
+    setIsStyleMenuOpen(false);
+
     // If editor is available and has selection, apply underline to selected text
     if (editor && !editor.state.selection.empty) {
       editor.chain().focus().toggleUnderline().run();
@@ -328,12 +347,96 @@ const TextToolbar = ({
     }
   }, [element, editor, applyUpdate]);
 
+  const handleAlignmentChange = useCallback((alignment) => {
+    if (!element) {
+      return;
+    }
+
+    setIsAlignmentMenuOpen(false);
+    setIsStyleMenuOpen(false);
+
+    if (editor) {
+      editor.chain().focus().setTextAlign(alignment).run();
+    }
+
+    applyUpdate({ textAlign: alignment, textStyle: 'custom' });
+  }, [applyUpdate, editor, element]);
+
+  useEffect(() => {
+    if (!isStyleMenuOpen) {
+      return undefined;
+    }
+
+    const handleClickAway = (event) => {
+      if (!styleMenuRef.current || styleMenuRef.current.contains(event.target)) {
+        return;
+      }
+      setIsStyleMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', handleClickAway);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickAway);
+    };
+  }, [isStyleMenuOpen]);
+
+  const toggleStyleMenu = () => {
+    setIsStyleMenuOpen((current) => {
+      const next = !current;
+      if (!current) {
+        setIsAlignmentMenuOpen(false);
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (!isAlignmentMenuOpen) {
+      return undefined;
+    }
+
+    const handleClickAway = (event) => {
+      if (!alignmentMenuRef.current || alignmentMenuRef.current.contains(event.target)) {
+        return;
+      }
+      setIsAlignmentMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', handleClickAway);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickAway);
+    };
+  }, [isAlignmentMenuOpen]);
+
+  const toggleAlignmentMenu = () => {
+    setIsAlignmentMenuOpen((current) => {
+      const next = !current;
+      if (!current) {
+        setIsStyleMenuOpen(false);
+      }
+      return next;
+    });
+  };
+
+  const boldActive = (editor && editor.isActive('bold')) || !!element?.bold;
+  const italicActive = (editor && editor.isActive('italic')) || !!element?.italic;
+  const underlineActive = (editor && editor.isActive('underline')) || !!element?.underline;
+  const alignment = editor?.isActive({ textAlign: 'center' })
+    ? 'center'
+    : editor?.isActive({ textAlign: 'right' })
+    ? 'right'
+    : element?.textAlign || 'left';
+  const alignmentLabel = alignment.charAt(0).toUpperCase() + alignment.slice(1);
+
   const handleDelete = useCallback(() => {
     if (!element || typeof onDelete !== 'function') {
       return;
     }
+    closeMenus();
     onDelete(element.id);
-  }, [element, onDelete]);
+  }, [element, onDelete, closeMenus]);
 
   if (!isVisible || !element) {
     return null;
@@ -401,31 +504,83 @@ const TextToolbar = ({
           />
         </div>
 
-        <div className="toolbar-item styles">
+        <div className="toolbar-item styles" ref={styleMenuRef}>
           <button
             type="button"
-            className={`text-style-button ${(editor && editor.isActive('bold')) || element.bold ? 'is-active' : ''}`}
-            onClick={toggleBold}
-            aria-pressed={(editor && editor.isActive('bold')) || element.bold ? 'true' : 'false'}
+            className={`text-style-trigger${isStyleMenuOpen ? ' is-open' : ''}`}
+            onClick={toggleStyleMenu}
+            aria-haspopup="true"
+            aria-expanded={isStyleMenuOpen}
           >
-            <span className="style-label">B</span>
+            <span className="style-trigger-label">Style</span>
+            <span className="style-trigger-caret" aria-hidden="true">▾</span>
           </button>
+          {isStyleMenuOpen && (
+            <div className="text-style-menu" role="menu">
+              <label className={`text-style-option${boldActive ? ' is-active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={boldActive}
+                  onChange={toggleBold}
+                />
+                <span>B</span>
+                <span className="option-label">Bold</span>
+              </label>
+              <label className={`text-style-option${italicActive ? ' is-active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={italicActive}
+                  onChange={toggleItalic}
+                />
+                <span>I</span>
+                <span className="option-label">Italic</span>
+              </label>
+              <label className={`text-style-option${underlineActive ? ' is-active' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={underlineActive}
+                  onChange={toggleUnderline}
+                />
+                <span>U</span>
+                <span className="option-label">Underline</span>
+              </label>
+            </div>
+          )}
+        </div>
+
+        <div className="toolbar-item alignment" ref={alignmentMenuRef}>
           <button
             type="button"
-            className={`text-style-button ${(editor && editor.isActive('italic')) || element.italic ? 'is-active' : ''}`}
-            onClick={toggleItalic}
-            aria-pressed={(editor && editor.isActive('italic')) || element.italic ? 'true' : 'false'}
+            className={`text-alignment-trigger${isAlignmentMenuOpen ? ' is-open' : ''}`}
+            onClick={toggleAlignmentMenu}
+            aria-haspopup="true"
+            aria-expanded={isAlignmentMenuOpen}
           >
-            <span className="style-label">I</span>
+            <span className={`alignment-icon alignment-${alignment}`} aria-hidden="true" />
+            <span className="alignment-label">{alignmentLabel}</span>
+            <span className="style-trigger-caret" aria-hidden="true">▾</span>
           </button>
-          <button
-            type="button"
-            className={`text-style-button ${(editor && editor.isActive('underline')) || element.underline ? 'is-active' : ''}`}
-            onClick={toggleUnderline}
-            aria-pressed={(editor && editor.isActive('underline')) || element.underline ? 'true' : 'false'}
-          >
-            <span className="style-label">U</span>
-          </button>
+          {isAlignmentMenuOpen && (
+            <div className="text-alignment-menu" role="menu">
+              {['left', 'center', 'right'].map((option) => (
+                <button
+                  type="button"
+                  key={option}
+                  className={`text-alignment-option${alignment === option ? ' is-active' : ''}`}
+                  onClick={() => {
+                    handleAlignmentChange(option);
+                    setIsAlignmentMenuOpen(false);
+                  }}
+                  role="menuitemradio"
+                  aria-checked={alignment === option}
+                >
+                  <span className={`alignment-icon alignment-${option}`} aria-hidden="true" />
+                  <span>{option.charAt(0).toUpperCase() + option.slice(1)}</span>
+                  {alignment === option && <span className="alignment-check" aria-hidden="true">✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="toolbar-item delete">

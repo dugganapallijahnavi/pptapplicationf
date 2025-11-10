@@ -13,6 +13,7 @@ import {
   Filler
 } from 'chart.js';
 import { Bar, Line, Pie } from 'react-chartjs-2';
+import fastDeepEqual from 'fast-deep-equal';
 
 ChartJS.register(
   CategoryScale,
@@ -168,27 +169,17 @@ const ChartComponent = ({ type = 'bar', data, options = {}, style }) => {
 };
 
 export default React.memo(ChartComponent, (prevProps, nextProps) => {
-  // Deep comparison for chart data to prevent unnecessary re-renders
-  const prevData = prevProps.data;
-  const nextData = nextProps.data;
-  
+  // Quick path: type changes, must rerender
   if (prevProps.type !== nextProps.type) return false;
-  
-  // Check labels
-  if (JSON.stringify(prevData?.labels) !== JSON.stringify(nextData?.labels)) return false;
-  
-  // Check datasets
-  if (prevData?.datasets?.length !== nextData?.datasets?.length) return false;
-  
-  // Check each dataset
-  for (let i = 0; i < (prevData?.datasets?.length || 0); i++) {
-    const prevDataset = prevData.datasets[i];
-    const nextDataset = nextData.datasets[i];
-    
-    if (prevDataset?.label !== nextDataset?.label) return false;
-    if (prevDataset?.color !== nextDataset?.color) return false;
-    if (JSON.stringify(prevDataset?.data) !== JSON.stringify(nextDataset?.data)) return false;
+
+  // Fast deep equality for chart data
+  const t0 = performance.now();
+  const dataEqual = fastDeepEqual(prevProps.data, nextProps.data);
+  const t1 = performance.now();
+  if (t1 - t0 > 8) {
+    // Log slow chart comparison, but don't block UI
+    // eslint-disable-next-line
+    console.warn(`ChartComponent memo: Slow comparison (${(t1-t0).toFixed(2)}ms)`);
   }
-  
-  return true;
+  return dataEqual;
 });

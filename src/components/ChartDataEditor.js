@@ -386,9 +386,7 @@ const ChartDataEditor = ({
   };
 
   return (
-    <div className="chart-data-editor-overlay" role="dialog" aria-modal="true">
-      <div className="chart-data-editor-backdrop" onClick={onClose} />
-      <aside className="chart-data-editor-panel">
+    <aside className="chart-data-editor-panel" role="dialog" aria-modal="true">
         <div className="chart-editor-header">
           <div>
             <h2>Edit Chart Data</h2>
@@ -546,7 +544,6 @@ const ChartDataEditor = ({
           </button>
         </div>
       </aside>
-    </div>
   );
 };
 

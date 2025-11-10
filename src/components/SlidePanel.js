@@ -33,6 +33,11 @@ const ensureNumber = (value) => {
   return Number.isFinite(numeric) ? numeric : 0;
 };
 
+const SLIDE_BASE_WIDTH = 960;
+const SLIDE_BASE_HEIGHT = 540;
+const THUMBNAIL_WIDTH = 200;
+const THUMBNAIL_HEIGHT = Math.round((SLIDE_BASE_HEIGHT / SLIDE_BASE_WIDTH) * THUMBNAIL_WIDTH);
+
 const extractChartPreview = (element) => {
   const chartType = element.chartType || element.chartData?.type || 'bar';
   const chartData = element.chartData;
@@ -104,7 +109,7 @@ const SlidePanel = ({
   addSlide,
   deleteSlide,
   moveSlide,
-  thumbnails
+  thumbnails = {}
 }) => {
   const [isLayoutPickerOpen, setIsLayoutPickerOpen] = useState(false);
   const [layoutInsertIndex, setLayoutInsertIndex] = useState(null);
@@ -112,6 +117,8 @@ const SlidePanel = ({
   const [dragIndex, setDragIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [dragPosition, setDragPosition] = useState(null);
+  const scaleX = THUMBNAIL_WIDTH / SLIDE_BASE_WIDTH;
+  const scaleY = THUMBNAIL_HEIGHT / SLIDE_BASE_HEIGHT;
 
   useEffect(() => {
     if (!isLayoutPickerOpen) {
@@ -260,7 +267,8 @@ const SlidePanel = ({
 
       <div className="slides-list">
         {slides.map((slide, index) => {
-          const thumbnailSrc = thumbnails?.[slide.id];
+          const previewImage = thumbnails?.[slide.id];
+
           return (
             <div
               key={slide.id}
@@ -297,42 +305,49 @@ const SlidePanel = ({
               <div
                 className="slide-card-preview"
                 style={{
-                  background:
-                    typeof slide.background === 'string'
-                      ? slide.background
-                      : slide.background?.color || '#ffffff',
+                  background: previewImage
+                    ? 'transparent'
+                    : typeof slide.background === 'string'
+                        ? slide.background
+                        : slide.background?.color || '#ffffff',
                   position: 'relative',
-                  overflow: 'hidden'
+                  overflow: 'hidden',
+                  width: `${THUMBNAIL_WIDTH}px`,
+                  height: `${THUMBNAIL_HEIGHT}px`
                 }}
               >
-                {(Array.isArray(slide.content) && slide.content.length === 0) ? (
-                  <span className="slide-card-preview-placeholder">Empty slide</span>
-                ) : thumbnailSrc ? (
+                {previewImage ? (
                   <img
-                    src={thumbnailSrc}
-                    alt={`Slide ${index + 1} preview`}
+                    src={previewImage}
+                    alt={`Preview of slide ${index + 1}`}
                     className="slide-card-preview-image"
                   />
+                ) : (Array.isArray(slide.content) && slide.content.length === 0) ? (
+                  <span className="slide-card-preview-placeholder">Empty slide</span>
                 ) : (
                   slide.content.map((element) => {
-                    const scale = 0.15;
+                    const numericX = ensureNumber(element.x);
+                    const numericY = ensureNumber(element.y);
+                    const numericWidth = Number.isFinite(element.width) ? element.width : null;
+                    const numericHeight = Number.isFinite(element.height) ? element.height : null;
+                    const scaledLeft = numericX * scaleX;
+                    const scaledTop = numericY * scaleY;
+                    const scaledWidth = numericWidth !== null ? Math.max(numericWidth * scaleX, 1) : null;
+                    const scaledHeight = numericHeight !== null ? Math.max(numericHeight * scaleY, 1) : null;
                     const baseStyle = {
                       position: 'absolute',
-                      left: `${(Number(element.x) || 0) * scale}px`,
-                      top: `${(Number(element.y) || 0) * scale}px`,
-                      width: Number.isFinite(element.width)
-                        ? `${element.width * scale}px`
-                        : 'auto',
-                      height: Number.isFinite(element.height)
-                        ? `${element.height * scale}px`
-                        : 'auto',
+                      left: `${scaledLeft}px`,
+                      top: `${scaledTop}px`,
+                      width: scaledWidth !== null ? `${scaledWidth}px` : 'auto',
+                      height: scaledHeight !== null ? `${scaledHeight}px` : 'auto',
                       pointerEvents: 'none'
                     };
 
                     if (element.type === 'text') {
-                      const fontSize = Number.isFinite(element.fontSize)
-                        ? element.fontSize * scale
-                        : 12 * scale;
+                      const baseFontSize = Number.isFinite(element.fontSize)
+                        ? element.fontSize
+                        : 12;
+                      const fontSize = baseFontSize * scaleY;
                       const plainText = element.plainText
                         || (typeof element.text === 'string'
                           ? element.text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
@@ -352,7 +367,7 @@ const SlidePanel = ({
                             overflow: 'hidden',
                             whiteSpace: 'nowrap',
                             textOverflow: 'ellipsis',
-                            maxWidth: `${(Number(element.width) || 0) * scale}px`
+                            maxWidth: scaledWidth !== null ? `${scaledWidth}px` : undefined
                           }}
                           title={plainText}
                         >
@@ -365,7 +380,7 @@ const SlidePanel = ({
                       const fillColor = element.color || element.fillColor || '#3b82f6';
                       const borderColor = element.borderColor || fillColor;
                       const borderWidth = Number.isFinite(element.borderWidth)
-                        ? Math.max(element.borderWidth * scale, 0.5)
+                        ? Math.max(element.borderWidth * scaleX, 0.5)
                         : 0;
                       const commonStyle = {
                         ...baseStyle,
@@ -374,7 +389,7 @@ const SlidePanel = ({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: `${Math.max(10 * scale, 3)}px`,
+                        fontSize: `${Math.max(10 * scaleY, 3)}px`,
                         color: element.textColor || '#ffffff',
                         fontWeight: 600,
                         overflow: 'hidden'
@@ -396,14 +411,15 @@ const SlidePanel = ({
                             key={element.id}
                             style={{
                               ...baseStyle,
-                              height: `${Math.max((element.strokeWidth || 2) * scale, 1)}px`,
+                              height: `${Math.max((element.strokeWidth || 2) * scaleY, 1)}px`,
                               background: fillColor,
                               borderRadius: '999px'
                             }}
                           />
                         );
                       } else {
-                        commonStyle.borderRadius = `${Math.max(8 * scale, 2)}px`;
+                        const radiusScale = Math.min(scaleX, scaleY);
+                        commonStyle.borderRadius = `${Math.max(8 * radiusScale, 2)}px`;
                       }
 
                       return (
@@ -415,17 +431,17 @@ const SlidePanel = ({
 
                     if (element.type === 'chart') {
                       const { chartType, labels, datasets } = extractChartPreview(element);
-                      const previewWidth = Number.isFinite(element.width)
-                        ? element.width * scale
-                        : 180 * scale;
-                      const previewHeight = Number.isFinite(element.height)
-                        ? element.height * scale
-                        : 120 * scale;
+                      const chartWidth = scaledWidth !== null
+                        ? scaledWidth
+                        : THUMBNAIL_WIDTH * 0.6;
+                      const chartHeight = scaledHeight !== null
+                        ? scaledHeight
+                        : THUMBNAIL_HEIGHT * 0.6;
 
                       const chartStyle = {
                         ...baseStyle,
-                        width: `${previewWidth}px`,
-                        height: `${previewHeight}px`,
+                        width: `${chartWidth}px`,
+                        height: `${chartHeight}px`,
                         border: '0.5px solid rgba(148, 163, 184, 0.45)',
                         borderRadius: '4px',
                         background: element.background || '#ffffff',
@@ -475,8 +491,8 @@ const SlidePanel = ({
                         );
                       }
 
-                      const innerWidth = Math.max(20, previewWidth - 8);
-                      const innerHeight = Math.max(20, previewHeight - 12);
+                      const innerWidth = Math.max(20, chartWidth - 8);
+                      const innerHeight = Math.max(20, chartHeight - 12);
                       const maxValue = Math.max(
                         ...datasets.flatMap((dataset) => dataset.data.map((value) => Math.max(value, 0))),
                         1
@@ -563,13 +579,19 @@ const SlidePanel = ({
                         background: '#e5e7eb'
                       };
 
+                      const flipStyles = {};
+                      if (element.flipHorizontal || element.flipVertical) {
+                        flipStyles.transform = `scale(${element.flipHorizontal ? -1 : 1}, ${element.flipVertical ? -1 : 1})`;
+                        flipStyles.transformOrigin = 'center center';
+                      }
+
                       return (
                         <div key={element.id} style={containerStyle}>
                           {element.src ? (
                             <img
                               src={element.src}
                               alt=""
-                              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', ...flipStyles }}
                             />
                           ) : (
                             <div className="slide-card-preview-placeholder">Image</div>

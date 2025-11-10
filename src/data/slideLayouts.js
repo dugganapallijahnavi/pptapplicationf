@@ -1,6 +1,16 @@
 const uniqueId = (prefix) =>
   `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
+const stripHtml = (value) => {
+  if (!value) {
+    return '';
+  }
+  return value
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 const createTextElement = (text, overrides = {}) => ({
   id: uniqueId('text'),
   type: 'text',
@@ -17,7 +27,12 @@ const createTextElement = (text, overrides = {}) => ({
   bold: false,
   italic: false,
   underline: false,
-  ...overrides
+  ...overrides,
+  plainText:
+    overrides.plainText ??
+    stripHtml(
+      typeof (overrides.text ?? text) === 'string' ? overrides.text ?? text : ''
+    )
 });
 
 const createParagraphElement = (text, overrides = {}) =>
@@ -77,16 +92,14 @@ export const SLIDE_LAYOUTS = [
         width: 720,
         fontSize: 52,
         fontWeight: 600,
-        textStyle: 'heading',
-        textAlign: 'center'
+        textStyle: 'heading'
       }),
       createParagraphElement('Add a supporting subtitle', {
         x: 120,
         y: 320,
         width: 720,
         fontSize: 22,
-        color: '#374151',
-        textAlign: 'center'
+        color: '#374151'
       })
     ]
   },

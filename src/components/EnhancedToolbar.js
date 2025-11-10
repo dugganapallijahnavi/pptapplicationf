@@ -1,13 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './EnhancedToolbar.css';
-import TableGridSelector from './TableGridSelector';
 
 const INSERT_OPTIONS = [
   { key: 'text', label: 'TEXT' },
   { key: 'image', label: 'IMAGE' },
   { key: 'shape', label: 'SHAPES' },
-  { key: 'chart', label: 'CHARTS' },
-  { key: 'table', label: 'TABLE' }
+  { key: 'chart', label: 'CHARTS' }
 ];
 
 const SHAPE_OPTIONS = [
@@ -27,7 +25,7 @@ const CHART_OPTIONS = [
 
 const EnhancedToolbar = ({
   onInsertElement,
-  onSavePresentation,
+  onDownloadPresentation,
   onStartSlideshow,
   keepInsertEnabled = false,
   onToggleKeepInsert,
@@ -36,16 +34,27 @@ const EnhancedToolbar = ({
   onUndo,
   onRedo,
   canUndo = false,
-  canRedo = false
+  canRedo = false,
+  onExitEditor,
+  designOptions = [],
+  activeDesignId,
+  onSelectDesign,
+  onFilesMenuToggle
 }) => {
   const [activePanel, setActivePanel] = useState(null);
+  const [isDesignPanelOpen, setIsDesignPanelOpen] = useState(false);
   const panelRef = useRef(null);
   const toolbarRef = useRef(null);
+  const designPanelRef = useRef(null);
+  const filesMenuRef = useRef(null);
+  const [isFilesMenuOpen, setIsFilesMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       const toolbarNode = toolbarRef.current;
       const panelNode = panelRef.current;
+      const designNode = designPanelRef.current;
+      const filesNode = filesMenuRef.current;
       if (
         toolbarNode &&
         panelNode &&
@@ -54,14 +63,34 @@ const EnhancedToolbar = ({
       ) {
         setActivePanel(null);
       }
+
+      if (
+        designNode &&
+        !designNode.contains(event.target) &&
+        !toolbarNode?.contains(event.target)
+      ) {
+        setIsDesignPanelOpen(false);
+        setIsFilesMenuOpen(false);
+        onFilesMenuToggle?.(false);
+      }
+
+      if (filesNode && !filesNode.contains(event.target)) {
+        setIsFilesMenuOpen(false);
+        onFilesMenuToggle?.(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [onFilesMenuToggle]);
 
   const handlePrimaryInsert = (type) => {
-    if (type === 'shape' || type === 'chart' || type === 'table') {
+    setIsDesignPanelOpen(false);
+    if (isFilesMenuOpen) {
+      setIsFilesMenuOpen(false);
+      onFilesMenuToggle?.(false);
+    }
+    if (type === 'shape' || type === 'chart') {
       setActivePanel((prev) => (prev === type ? null : type));
       return;
     }
@@ -76,11 +105,16 @@ const EnhancedToolbar = ({
     }
   };
 
-  const handleTableSelect = (rows, cols) => {
-    onInsertElement?.('table', null, { rows, cols });
-    if (!keepInsertEnabled) {
-      setActivePanel(null);
-    }
+  const handleFileOpen = () => {
+    setIsFilesMenuOpen(false);
+    onFilesMenuToggle?.(false);
+    onExitEditor?.();
+  };
+
+  const handleFileSave = () => {
+    onDownloadPresentation?.('pptx');
+    setIsFilesMenuOpen(false);
+    onFilesMenuToggle?.(false);
   };
 
   const renderPanelContent = () => {
@@ -121,15 +155,6 @@ const EnhancedToolbar = ({
       );
     }
 
-    if (activePanel === 'table') {
-      return (
-        <TableGridSelector
-          onSelect={handleTableSelect}
-          onClose={() => setActivePanel(null)}
-        />
-      );
-    }
-
     return null;
   };
 
@@ -150,9 +175,83 @@ const EnhancedToolbar = ({
     }
   };
 
+  const renderDesignPreview = (design) => {
+    if (!design) {
+      return null;
+    }
+    const colors = Array.isArray(design.preview) && design.preview.length
+      ? design.preview
+      : [design.background, design.accentColor];
+
+    return (
+      <div className="design-preview-chip">
+        {colors.filter(Boolean).slice(0, 3).map((color, index) => (
+          <span
+            key={`${design.id}-color-${index}`}
+            className="design-preview-swatch"
+            style={{ backgroundColor: color }}
+          />
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="enhanced-toolbar" ref={toolbarRef}>
       <div className="toolbar-left">
+        <div className="files-menu-wrapper" ref={filesMenuRef}>
+          <button
+            type="button"
+            className={`toolbar-button files-button ${isFilesMenuOpen ? 'active' : ''}`}
+            onClick={() => {
+              setActivePanel(null);
+              setIsDesignPanelOpen(false);
+              setIsFilesMenuOpen((prev) => {
+                const next = !prev;
+                onFilesMenuToggle?.(next);
+                return next;
+              });
+            }}
+            title="Files"
+          >
+            <span className="button-icon" aria-hidden="true">📁</span>
+            <span className="button-text">Files</span>
+            <span className="files-caret" aria-hidden="true">▾</span>
+          </button>
+          {isFilesMenuOpen && (
+            <div className="files-menu">
+              {typeof onExitEditor === 'function' && (
+                <button type="button" onClick={handleFileOpen}>
+                  <span className="option-label">Open</span>
+                </button>
+              )}
+              <button type="button" onClick={handleFileSave}>
+                <span className="option-label">Save</span>
+                <span className="option-hint">(.pptx)</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        <button
+          type="button"
+          className={`toolbar-button design-button ${isDesignPanelOpen ? 'active' : ''}`}
+          onClick={() => {
+            setActivePanel(null);
+            if (isFilesMenuOpen) {
+              setIsFilesMenuOpen(false);
+              onFilesMenuToggle?.(false);
+            }
+            setIsDesignPanelOpen((prev) => !prev);
+          }}
+          title="Designs"
+        >
+          <span className="button-icon">🎨</span>
+          <span className="button-text">Designs</span>
+        </button>
+
+        <div className="toolbar-divider" />
+
         {INSERT_OPTIONS.map((option) => (
           <button
             key={option.key}
@@ -164,9 +263,9 @@ const EnhancedToolbar = ({
             <span className="button-text">{option.label.charAt(0) + option.label.slice(1).toLowerCase()}</span>
           </button>
         ))}
-        
+
         <div className="toolbar-divider" />
-        
+
         <button
           type="button"
           className="toolbar-button undo-redo-button"
@@ -188,7 +287,6 @@ const EnhancedToolbar = ({
           <span className="button-icon">→</span>
           <span className="button-text">Redo</span>
         </button>
-
         {activePanel && (
           <div className="toolbar-panel" ref={panelRef}>
             <div className="panel-options">{renderPanelContent()}</div>
@@ -208,10 +306,50 @@ const EnhancedToolbar = ({
         <button type="button" className="toolbar-button presentation-button" onClick={() => onStartSlideshow?.()}>
           <span className="button-text">Presentation</span>
         </button>
-        <button type="button" className="toolbar-button save-button" onClick={() => onSavePresentation?.()}>
-          <span className="button-text">Save PPTX</span>
-        </button>
       </div>
+
+      {isDesignPanelOpen && (
+        <div className="design-panel" ref={designPanelRef}>
+          <div className="design-panel-header">
+            <span className="panel-title">Designs</span>
+            <button
+              type="button"
+              className="close-design-panel"
+              onClick={() => setIsDesignPanelOpen(false)}
+              aria-label="Close design panel"
+            >
+              ×
+            </button>
+          </div>
+          <div className="design-list">
+            {designOptions.length === 0 && (
+              <div className="design-empty-state">No design presets available.</div>
+            )}
+            {designOptions.map((design) => {
+              const isActive = design.id === activeDesignId;
+              return (
+                <button
+                  key={design.id}
+                  type="button"
+                  className={`design-option ${isActive ? 'active' : ''}`}
+                  onClick={() => {
+                    onSelectDesign?.(design.id);
+                    setIsDesignPanelOpen(false);
+                  }}
+                >
+                  {renderDesignPreview(design)}
+                  <div className="design-option-info">
+                    <span className="design-option-name">{design.name}</span>
+                    {design.description && (
+                      <span className="design-option-desc">{design.description}</span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

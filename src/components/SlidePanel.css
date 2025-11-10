@@ -170,7 +170,7 @@
 }
 
 .slide-card-preview {
-  background: #e5e7eb;
+  background: transparent;
   border-radius: 12px;
   min-height: 110px;
   display: block;
@@ -183,14 +183,17 @@
   border: 1px solid rgba(203, 213, 225, 0.6);
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  padding: 8px;
+  padding: 0;
 }
 
 .slide-card-preview-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
   display: block;
+  border-radius: inherit;
+  background: #f8fafc;
 }
 
 .slide-card-preview span {

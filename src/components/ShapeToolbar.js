@@ -34,6 +34,7 @@ const ShapeToolbar = ({
   element,
   onUpdate,
   onDelete,
+  onDuplicate,
   position,
   isVisible = false,
   onDismiss
@@ -75,7 +76,11 @@ const ShapeToolbar = ({
 
   const handleMouseLeave = (event) => {
     const next = event.relatedTarget;
-    if (next && (next.closest('.shape-toolbar-wrapper') || next.closest('[data-shape-element="true"]'))) {
+    if (
+      next &&
+      typeof next.closest === 'function' &&
+      (next.closest('.shape-toolbar-wrapper') || next.closest('[data-shape-element="true"]'))
+    ) {
       return;
     }
     onDismiss?.();
@@ -120,6 +125,16 @@ const ShapeToolbar = ({
           onClick={(event) => event.stopPropagation()}
           aria-label="Choose shape color"
         />
+
+        <button
+          type="button"
+          className="shape-toolbar-duplicate"
+          onClick={() => onDuplicate?.(element.id)}
+          onMouseDown={(event) => event.stopPropagation()}
+          title="Duplicate"
+        >
+          ⧉
+        </button>
 
         <button
           type="button"

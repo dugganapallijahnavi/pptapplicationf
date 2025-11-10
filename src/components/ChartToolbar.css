@@ -9,18 +9,18 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #ffffff;
-  border: 1px solid #d1d5db;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 .chart-type-select {
   height: 28px;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  background: #e5e7eb;
-  color: #1f2937;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  color: #1a1a1a;
   font-size: 13px;
   font-weight: 500;
   padding: 0 8px;
@@ -30,44 +30,60 @@
 }
 
 .chart-type-select:hover {
-  background: #d1d5db;
-  border-color: #9ca3af;
+  background: #e6e4e4;
+  border-color: rgba(0, 0, 0, 0.15);
 }
 
 .chart-type-select:focus {
-  border-color: #6b7280;
+  border-color: rgba(0, 0, 0, 0.2);
   background: #ffffff;
 }
 
 .chart-toolbar-button {
-  border: 1px solid #d1d5db;
-  background: #e5e7eb;
-  color: #374151;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  color: #1a1a1a;
   font-size: 13px;
   font-weight: 600;
   padding: 0 14px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
+.chart-toolbar-button.duplicate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  padding: 0 12px;
+}
+
+.chart-toolbar-button.duplicate:hover {
+  transform: translateY(-1px);
+}
+
+.chart-toolbar-button.duplicate:active {
+  transform: translateY(0);
+}
+
 .chart-toolbar-button:hover {
-  background: #d1d5db;
-  border-color: #9ca3af;
-  color: #111827;
+  background: #e6e4e4;
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #1a1a1a;
 }
 
 .chart-toolbar-button.delete {
-  border-color: #d1d5db;
-  background: #e5e7eb;
-  color: #374151;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  color: #1a1a1a;
 }
 
 .chart-toolbar-button.delete:hover {
-  background: #d1d5db;
-  border-color: #9ca3af;
-  color: #111827;
+  background: #e6e4e4;
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #1a1a1a;
 }
 
 @media (max-width: 640px) {

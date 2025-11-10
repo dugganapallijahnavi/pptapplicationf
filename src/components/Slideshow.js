@@ -492,7 +492,15 @@ const Slideshow = ({ slides, currentSlide, setCurrentSlide, onExit }) => {
                           maxWidth: '100%',
                           maxHeight: '100%',
                           objectFit: 'contain',
-                          display: 'block'
+                          display: 'block',
+                          transform:
+                            element.flipHorizontal || element.flipVertical
+                              ? `scale(${element.flipHorizontal ? -1 : 1}, ${element.flipVertical ? -1 : 1})`
+                              : undefined,
+                          transformOrigin:
+                            element.flipHorizontal || element.flipVertical
+                              ? 'center center'
+                              : undefined
                         }}
                       />
                     </div>
