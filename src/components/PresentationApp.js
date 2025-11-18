@@ -1,15 +1,15 @@
 // src/components/PresentationApp.js
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import './PresentationApp.css';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Rnd } from 'react-rnd';
+import './PresentationApp.css';
 import ChartComponent from './ChartComponent';
-import ChartDataEditor from './ChartDataEditor';
 import ImageComponent from './ImageComponent';
 import RichTextEditor from './RichTextEditor';
 import TextToolbar from './TextToolbar';
 import ShapeToolbar from './ShapeToolbar';
 import ChartToolbar from './ChartToolbar';
 import ImageToolbar from './ImageToolbar';
+import RightFormatPanel from './RightFormatPanel';
 
 import SlidePanel from './SlidePanel';
 import EnhancedToolbar from './EnhancedToolbar';
@@ -67,6 +67,11 @@ const chartTypeLabels = {
 };
 
 const SLIDESHOW_AUTO_ADVANCE_MS = 5000;
+
+const MIN_ZOOM = 0.4;
+const MAX_ZOOM = 2.4;
+const ZOOM_STEP = 0.1;
+const ZOOM_PRESETS = [1.25, 1, 0.75, 0.5];
 
 const createId = (prefix) =>
   `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
@@ -444,7 +449,7 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
   const [chartToolbarPosition, setChartToolbarPosition] = useState(null);
   const [imageToolbarPosition, setImageToolbarPosition] = useState(null);
   const [editingImage, setEditingImage] = useState(null);
-  const [chartEditorId, setChartEditorId] = useState(null);
+  const [imageReplaceTargetId, setImageReplaceTargetId] = useState(null);
   const [selectedElement, setSelectedElement] = useState(null);
   const [editingTextId, setEditingTextId] = useState(null);
   const [textEditors, setTextEditors] = useState({});
@@ -491,11 +496,60 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
   const isMutatingRef = useRef(false);
   const endMutatingTimeoutRef = useRef(null);
   const [interactingElementId, setInteractingElementId] = useState(null);
+  const [activeFormatPanel, setActiveFormatPanel] = useState(null);
+  const [formatPanelElementId, setFormatPanelElementId] = useState(null);
   const slidesRef = useRef(slides);
   const [isSlideshowPaused, setIsSlideshowPaused] = useState(false);
   const historyRef = useRef(history);
   const historyIndexRef = useRef(historyIndex);
   const persistenceTimeoutRef = useRef(null);
+
+  const closeFormatPanel = useCallback(() => {
+    setActiveFormatPanel(null);
+    setFormatPanelElementId(null);
+  }, []);
+
+  const openFormatPanel = useCallback((panelType, elementId) => {
+    if (!panelType || !elementId) {
+      closeFormatPanel();
+      return;
+    }
+    setActiveFormatPanel(panelType);
+    setFormatPanelElementId(elementId);
+  }, [closeFormatPanel]);
+
+  const formatPanelElement = useMemo(() => {
+    if (!formatPanelElementId) {
+      return null;
+    }
+    const slide = slides[currentSlideIndex];
+    if (!slide) {
+      return null;
+    }
+    return slide.content?.find((item) => item.id === formatPanelElementId) || null;
+  }, [slides, currentSlideIndex, formatPanelElementId]);
+
+  useEffect(() => {
+    if (!activeFormatPanel) {
+      return;
+    }
+    if (!formatPanelElement || formatPanelElement.type !== activeFormatPanel) {
+      closeFormatPanel();
+    }
+  }, [activeFormatPanel, formatPanelElement, closeFormatPanel]);
+
+  useEffect(() => {
+    if (!activeFormatPanel) {
+      return;
+    }
+    if (!selectedElement || selectedElement.id !== formatPanelElementId) {
+      closeFormatPanel();
+    }
+  }, [activeFormatPanel, selectedElement, formatPanelElementId, closeFormatPanel]);
+
+  const formatPanelEditor = formatPanelElementId ? textEditors[formatPanelElementId] : null;
+  const isFormatPanelOpen = Boolean(activeFormatPanel && formatPanelElement);
+  // Removed unused isTextFormatPanelOpen variable
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -524,6 +578,8 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
   }, [viewportWidth]);
 
   // Add to history
+  const [zoomLevel, setZoomLevel] = useState(1);
+
   const addToHistory = useCallback((nextSlides) => {
     if (isUndoRedoAction.current || !Array.isArray(nextSlides)) {
       isUndoRedoAction.current = false;
@@ -1281,14 +1337,29 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
         updateTextToolbarPosition(element.id);
         setShapeToolbarPosition(null);
         setImageToolbarPosition(null);
+        setChartToolbarPosition(null);
       } else if (element.type === 'shape') {
         updateShapeToolbarPosition(element.id);
         setToolbarPosition({ x: 0, y: 0 });
         setImageToolbarPosition(null);
+        setChartToolbarPosition(null);
       } else if (element.type === 'image') {
         updateImageToolbarPosition(element.id);
         setToolbarPosition({ x: 0, y: 0 });
         setShapeToolbarPosition(null);
+        setChartToolbarPosition(null);
+      } else if (element.type === 'chart') {
+        const rect = elementRefs.current[element.id]?.getBoundingClientRect();
+        const slideRect = slideRef.current?.getBoundingClientRect();
+        if (rect && slideRect) {
+          const centerX = rect.left - slideRect.left + rect.width / 2;
+          const clampedX = Math.max(100, Math.min(centerX, slideRect.width - 100));
+          const relativeTop = Math.max(rect.top - slideRect.top - 48, 8);
+          setChartToolbarPosition({ x: clampedX, y: relativeTop });
+        }
+        setShapeToolbarPosition(null);
+        setImageToolbarPosition(null);
+        setToolbarPosition({ x: 0, y: 0 });
       }
     },
     [pendingInsert, updateShapeToolbarPosition, updateTextToolbarPosition, updateImageToolbarPosition]
@@ -1450,7 +1521,6 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
     if (editingImage === elementId) {
       setEditingImage(null);
     }
-    setChartEditorId((current) => (current === elementId ? null : current));
 
     // Clean up text editor instance
     setTextEditors((prev) => {
@@ -1519,30 +1589,38 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
     return null;
   }, [currentSlide, hoveredElement, selectedElement]);
 
+  const formatZoomLabel = useCallback((value) => `${Math.round(value * 100)}%`, []);
+
+  const handleZoomChange = useCallback((value) => {
+    setZoomLevel((prev) => {
+      const next = typeof value === 'number' ? value : prev;
+      return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number.isFinite(next) ? next : 1));
+    });
+  }, []);
+
+  const zoomIn = useCallback(() => {
+    setZoomLevel((prev) => Math.min(MAX_ZOOM, Math.round((prev + ZOOM_STEP) * 100) / 100));
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setZoomLevel((prev) => Math.max(MIN_ZOOM, Math.round((prev - ZOOM_STEP) * 100) / 100));
+  }, []);
+
+  const resetZoom = useCallback(() => {
+    setZoomLevel(1);
+  }, []);
+
+  const currentZoomLabel = useMemo(
+    () => formatZoomLabel(zoomLevel),
+    [zoomLevel, formatZoomLabel]
+  );
+
   const handleToggleKeepInsert = (enabled) => {
     setKeepInsertEnabled(enabled);
     if (!enabled) {
       cancelPendingInsert();
     }
   };
-
-  const chartEditorElement = useMemo(() => {
-    if (!chartEditorId) {
-      return null;
-    }
-    const slide = slides[currentSlideIndex];
-    return slide?.content?.find((item) => item.id === chartEditorId && item.type === 'chart') || null;
-  }, [chartEditorId, slides, currentSlideIndex]);
-
-  const closeChartEditor = useCallback(() => {
-    setChartEditorId(null);
-  }, []);
-
-  useEffect(() => {
-    if (chartEditorId && !chartEditorElement) {
-      closeChartEditor();
-    }
-  }, [chartEditorId, chartEditorElement, closeChartEditor]);
 
   // Track slides changes for history with debouncing
   useEffect(() => {
@@ -1592,27 +1670,6 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
       }
     };
   }, [scheduleThumbnailCapture]);
-
-  const handleChartEditorSave = useCallback((updatedChartData) => {
-    if (!chartEditorElement) {
-      return;
-    }
-    updateElement(chartEditorElement.id, {
-      chartData: updatedChartData,
-      chartType: updatedChartData.type || chartEditorElement.chartType || 'bar'
-    });
-    closeChartEditor();
-  }, [chartEditorElement, updateElement, closeChartEditor]);
-
-  const handleChartEditorChange = useCallback((updatedChartData) => {
-    if (!chartEditorElement) {
-      return;
-    }
-    updateElement(chartEditorElement.id, {
-      chartData: updatedChartData,
-      chartType: updatedChartData.type || chartEditorElement.chartType || 'bar'
-    });
-  }, [chartEditorElement, updateElement]);
 
   const describeInsertTarget = (config) => {
     if (!config) {
@@ -1741,7 +1798,10 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
         height: 100,
         color: defaultAccentColor,
         borderColor: defaultAccentColor,
-        borderWidth: 2
+        borderWidth: 2,
+        borderStyle: 'solid',
+        borderEnabled: true,
+        opacity: 1
       };
     } else if (type === 'chart') {
       const chartType = subtype || 'bar';
@@ -1801,165 +1861,72 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
     }
   };
 
-  const placeElementAt = (clientX, clientY, hostRect = null) => {
+  const insertElement = useCallback((element) => {
+    if (!element) {
+      return;
+    }
+
+    updateSlide(currentSlideIndex, {
+      ...currentSlide,
+      content: [...(currentSlide.content || []), element]
+    });
+
+    setSelectedElement(element);
+    if (element.type === 'text') {
+      setHoveredElement(element.id);
+      setEditingTextId(element.id);
+      focusTextElement(element.id);
+      updateTextToolbarPosition(element.id);
+    }
+
+    setPendingInsert(null);
+    setPendingInsertPos(null);
+    setActiveDropdown(null);
+  }, [currentSlide, currentSlideIndex, focusTextElement, updateSlide, updateTextToolbarPosition]);
+
+  const placeElementAt = useCallback((clientX, clientY, hostRect = null) => {
     if (!pendingInsert) {
       return;
     }
 
-    const insertConfig = pendingInsert;
-    const nextInsertConfig = {
-      type: insertConfig.type,
-      subtype: insertConfig.subtype || null
+    const rect = hostRect || slideRef.current?.getBoundingClientRect();
+    if (!rect) {
+      return;
+    }
+
+    const normalizedX = clientX - rect.left;
+    const normalizedY = clientY - rect.top;
+    const PLACE_SIZE = pendingInsert?.type === 'shape' ? 180 : 160;
+
+    const nextElement = {
+      ...pendingInsert,
+      x: Math.max(32, Math.min(rect.width - PLACE_SIZE, normalizedX - PLACE_SIZE / 2)),
+      y: Math.max(32, Math.min(rect.height - PLACE_SIZE, normalizedY - PLACE_SIZE / 2))
     };
 
-    let rect = hostRect;
-    if (!rect) {
-      const slideEl = document.querySelector('.editor-layout .slide-editor .slide');
-      if (!slideEl) {
-        return;
-      }
-      rect = slideEl.getBoundingClientRect();
+    if (pendingInsert?.type === 'shape') {
+      nextElement.width = PLACE_SIZE;
+      nextElement.height = PLACE_SIZE;
     }
 
-    const x = Math.max(0, Math.min(clientX - rect.left, rect.width - 10));
-    const y = Math.max(0, Math.min(clientY - rect.top, rect.height - 10));
-
-    const id = `element-${Date.now()}`;
-    let newElement = null;
-    const defaultTextColor = isDarkHexColor(activeSlideBackground)
-      ? '#f5f5f5'
-      : '#111111';
-    const defaultAccentColor = activeDesign.accentColor || '#3b82f6';
-
-    switch (insertConfig.type) {
-      case 'text':
-        newElement = {
-          id,
-          type: 'text',
-          x,
-          y,
-          width: 320,
-          height: 60,
-          fontSize: 20,
-          color: defaultTextColor,
-          fontFamily: 'Playfair Display, serif',
-          text: '<p>Click to edit text</p>',
-          plainText: 'Click to edit text',
-          textAlign: 'left',
-          fontWeight: 400,
-          bold: false,
-          italic: false,
-          underline: false,
-          textStyle: 'body'
-        };
-        break;
-      case 'shape':
-        newElement = {
-          id,
-          type: 'shape',
-          shape: insertConfig.subtype || 'rectangle',
-          x,
-          y,
-          width: 160,
-          height: 100,
-          color: defaultAccentColor,
-          borderColor: defaultAccentColor,
-          borderWidth: 2
-        };
-        break;
-      case 'line':
-        newElement = {
-          id,
-          type: 'line',
-          x,
-          y,
-          width: 220,
-          height: 2,
-          color: '#ffffff',
-          strokeWidth: 2
-        };
-        break;
-      case 'chart': {
-        const chartType = insertConfig.subtype || 'bar';
-        const defaultChart = createDefaultChartData(chartType);
-        const dimensions = CHART_DIMENSIONS[chartType] || { width: 360, height: 240 };
-        const clonedDatasets = (defaultChart.datasets || []).map((dataset) => ({
-          ...dataset,
-          data: Array.isArray(dataset.data) ? [...dataset.data] : [],
-          color: activeDesign.accentColor || dataset.color,
-          segmentColors: Array.isArray(dataset.segmentColors)
-            ? dataset.segmentColors.map(() => activeDesign.accentColor || dataset.color)
-            : dataset.segmentColors
-        }));
-
-        newElement = {
-          id,
-          type: 'chart',
-          x,
-          y,
-          width: dimensions.width,
-          height: dimensions.height,
-          chartType,
-          chartData: {
-            ...defaultChart,
-            datasets: clonedDatasets
-          }
-        };
-        break;
-      }
-      case 'image':
-        setPendingInsertPos({
-          x,
-          y,
-          id,
-          type: insertConfig.type,
-          subtype: insertConfig.subtype || null
-        });
-        if (imageInputRef.current) {
-          imageInputRef.current.value = '';
-          imageInputRef.current.click();
-        }
-        setPendingInsert(keepInsertEnabled ? nextInsertConfig : null);
-        return;
-      default:
-        break;
-    }
-
-    if (newElement) {
-      updateSlide(currentSlideIndex, {
-        ...currentSlide,
-        content: [...(currentSlide.content || []), newElement]
-      });
-      setSelectedElement(newElement);
-      if (newElement.type === 'text') {
-        setHoveredElement(newElement.id);
-        setEditingTextId(newElement.id);
-        focusTextElement(newElement.id);
-        updateTextToolbarPosition(newElement.id);
-      }
-    }
-
-    setPendingInsert(keepInsertEnabled ? nextInsertConfig : null);
-    setPendingInsertPos(null);
-  };
+    insertElement(nextElement);
+  }, [insertElement, pendingInsert]);
 
   const handleImageFileChange = (e) => {
     const file = e.target.files && e.target.files[0];
+    const isReplacingImage = Boolean(imageReplaceTargetId);
     if (!file) {
       if (imageInputRef.current) {
         imageInputRef.current.value = '';
       }
-      if (!keepInsertEnabled) {
+      if (isReplacingImage) {
+        setImageReplaceTargetId(null);
+      } else if (!keepInsertEnabled) {
         cancelPendingInsert();
       }
       return;
     }
 
-    if (!pendingInsertPos) {
-      return;
-    }
-
-    const insertInfo = pendingInsertPos;
     const reader = new FileReader();
     reader.onload = (event) => {
       const imageSrc = event.target.result;
@@ -1979,30 +1946,66 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
         let height = img.height;
         if (width > maxWidth) { width = maxWidth; height = width / aspectRatio; }
         if (height > maxHeight) { height = maxHeight; width = height * aspectRatio; }
-        const imageElement = {
-          id: insertInfo.id || `element-${Date.now()}`,
-          type: 'image',
-          x: insertInfo.x,
-          y: insertInfo.y,
-          width,
-          height,
-          src: imageSrc,
-          imageData: meta,
-          alt: file.name
-        };
-        updateSlide(currentSlideIndex, {
-          ...currentSlide,
-          content: [...(currentSlide.content || []), imageElement]
-        });
-        setSelectedElement(imageElement);
-        setPendingInsertPos(null);
-        if (!keepInsertEnabled) {
-          setPendingInsert(null);
-        }
+        if (isReplacingImage && imageReplaceTargetId) {
+          const currentSlide = slidesRef.current?.[currentSlideIndex];
+          const targetImage = currentSlide?.content?.find((item) => item.id === imageReplaceTargetId) || null;
+          const nextBorderWidth = Number.isFinite(targetImage?.borderWidth) && targetImage.borderWidth > 0
+            ? targetImage.borderWidth
+            : 2;
+          const nextBorderStyle = targetImage?.borderStyle || 'solid';
+          const nextBorderColor = targetImage?.borderColor || '#ffffff';
+          updateElement(imageReplaceTargetId, {
+            src: imageSrc,
+            imageData: meta,
+            width,
+            height,
+            aspectRatio,
+            maintainAspect: true,
+            borderEnabled: true,
+            borderWidth: nextBorderWidth,
+            borderStyle: nextBorderStyle,
+            borderColor: nextBorderColor
+          });
+          setImageReplaceTargetId(null);
+        } else {
+          if (!pendingInsertPos) {
+            setImageReplaceTargetId(null);
+            return;
+          }
+          const insertInfo = pendingInsertPos;
+          const imageElement = {
+            id: insertInfo.id || `element-${Date.now()}`,
+            type: 'image',
+            x: insertInfo.x,
+            y: insertInfo.y,
+            width,
+            height,
+            maintainAspect: true,
+            aspectRatio,
+            flipHorizontal: false,
+            flipVertical: false,
+            borderEnabled: true,
+            borderWidth: 2,
+            borderStyle: 'solid',
+            borderColor: '#ffffff',
+            src: imageSrc,
+            imageData: meta,
+            alt: file.name
+          };
+          updateSlide(currentSlideIndex, {
+            ...currentSlide,
+            content: [...(currentSlide.content || []), imageElement]
+          });
+          setSelectedElement(imageElement);
+          setPendingInsertPos(null);
+          if (!keepInsertEnabled) {
+            setPendingInsert(null);
+          }
 
-        const activeSlide = slidesRef.current?.[currentSlideIndex];
-        if (activeSlide?.id) {
-          clearThumbnail(activeSlide.id);
+          const activeSlide = slidesRef.current?.[currentSlideIndex];
+          if (activeSlide?.id) {
+            clearThumbnail(activeSlide.id);
+          }
         }
       };
       img.src = imageSrc;
@@ -2012,6 +2015,17 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
       imageInputRef.current.value = '';
     }
   };
+
+  const handleRequestReplaceImage = useCallback((element) => {
+    if (!element || element.type !== 'image') {
+      return;
+    }
+    setImageReplaceTargetId(element.id);
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
+      imageInputRef.current.click();
+    }
+  }, []);
 
   const persistCurrentState = useCallback((updatedSlides, updatedDesign, updatedFileName) => {
     if (!isInitialLoadComplete) {
@@ -2157,6 +2171,22 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
     }
   }, [persistCurrentState]);
 
+  const handleCanvasClick = useCallback((e) => {
+    if (pendingInsert) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      placeElementAt(e.clientX, e.clientY, rect);
+      return;
+    }
+
+    setSelectedElement(null);
+    setHoveredElement(null);
+    setToolbarPosition({ x: 0, y: 0 });
+    setShapeToolbarPosition(null);
+    setImageToolbarPosition(null);
+    setChartToolbarPosition(null);
+    closeFormatPanel();
+  }, [pendingInsert, placeElementAt, closeFormatPanel]);
+
   return (
     <>
       <div className="presentation-app">
@@ -2178,10 +2208,18 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
               designOptions={DESIGN_PRESETS}
               activeDesignId={activeDesign?.id}
               onSelectDesign={applyDesignPreset}
+              zoomLabel={currentZoomLabel}
+              onZoomIn={zoomIn}
+              onZoomOut={zoomOut}
+              onZoomReset={resetZoom}
+              onZoomSelect={handleZoomChange}
+              zoomPresets={ZOOM_PRESETS}
+              zoomCanZoomIn={zoomLevel < MAX_ZOOM - 0.01}
+              zoomCanZoomOut={zoomLevel > MIN_ZOOM + 0.01}
             />
 
             {/* Main Content Area */}
-            <main className="main-content">
+            <main className={`main-content${activeFormatPanel ? ' has-format-panel' : ''}`}>
               {/* Left Sidebar */}
               <SlidePanel
                 slides={slides}
@@ -2194,10 +2232,8 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
               />
 
               {/* Center - Slide Editor */}
-              <div
-                className={`slide-editor${chartEditorElement ? ' has-chart-editor' : ''}`}
-              >
-                <div className="slide-editor-canvas">
+              <div className="slide-editor">
+                <div className="slide-editor-canvas" style={{ '--user-zoom-scale': zoomLevel }}>
                   <div
                     className="slide"
                     style={{
@@ -2205,15 +2241,7 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
                       cursor: pendingInsert ? 'crosshair' : 'default'
                     }}
                     ref={slideRef}
-                    onClick={(e) => {
-                      if (pendingInsert) {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        placeElementAt(e.clientX, e.clientY, rect);
-                      } else {
-                        setSelectedElement(null);
-                        setImageToolbarPosition(null);
-                      }
-                    }}
+                    onClick={handleCanvasClick}
                   >
                   {currentSlide.content?.map((element) => {
                     const isSelected = selectedElement?.id === element.id;
@@ -2290,6 +2318,7 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
 
                         setToolbarPosition({ x: 0, y: 0 });
                         setShapeToolbarPosition(null);
+                        setChartToolbarPosition(null);
                         return;
                       } else if (element.type === 'shape') {
                         setHoveredElement(element.id);
@@ -2306,6 +2335,7 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
 
                         setToolbarPosition({ x: 0, y: 0 });
                         setImageToolbarPosition(null);
+                        setChartToolbarPosition(null);
                         return;
                       }
 
@@ -2331,7 +2361,10 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
                           8
                         );
                         setHoveredElement(element.id);
-                        setToolbarPosition({ x: clampedX, y: relativeTop });
+                        setToolbarPosition({
+                          x: clampedX,
+                          y: relativeTop
+                        });
                         setShapeToolbarPosition(null);
                         setImageToolbarPosition(null);
                       } else if (element.type === 'chart') {
@@ -2340,7 +2373,10 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
                         const clampedX = Math.max(100, Math.min(centerX, slideRect.width - 100));
                         const relativeTop = Math.max(rect.top - slideRect.top - 48, 8);
                         setHoveredElement(element.id);
-                        setChartToolbarPosition({ x: clampedX, y: relativeTop });
+                        setChartToolbarPosition({
+                          x: clampedX,
+                          y: relativeTop
+                        });
                         setToolbarPosition({ x: 0, y: 0 });
                         setShapeToolbarPosition(null);
                         setImageToolbarPosition(null);
@@ -2350,7 +2386,10 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
                         const clampedX = Math.max(100, Math.min(centerX, slideRect.width - 100));
                         const relativeTop = Math.max(rect.top - slideRect.top - 48, 8);
                         setHoveredElement(element.id);
-                        setImageToolbarPosition({ x: clampedX, y: relativeTop });
+                        setImageToolbarPosition({
+                          x: clampedX,
+                          y: relativeTop
+                        });
                         setToolbarPosition({ x: 0, y: 0 });
                         setShapeToolbarPosition(null);
                       } else if (element.type === 'shape') {
@@ -2557,6 +2596,15 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
                           color: '#ffffff'
                         };
 
+                        const borderEnabled = element.borderEnabled !== false;
+                        const borderWidth = Number.isFinite(element.borderWidth) ? element.borderWidth : 0;
+                        const borderStyle = element.borderStyle || 'solid';
+                        const borderColor = element.borderColor || element.color || '#3b82f6';
+                        const resolvedBorder =
+                          borderEnabled && borderWidth > 0
+                            ? `${borderWidth}px ${borderStyle} ${borderColor}`
+                            : 'none';
+
                         if (element.shape === 'line') {
                           return (
                             <div
@@ -2564,25 +2612,38 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
                                 width: '100%',
                                 height: `${element.strokeWidth || 2}px`,
                                 backgroundColor: element.color || '#ffffff',
-                                borderRadius: '999px'
+                                borderRadius: '999px',
+                                opacity: element.opacity ?? 1
                               }}
                             />
                           );
                         }
 
+                        const isCircle = element.shape === 'circle';
+                        const isTriangle = element.shape === 'triangle';
+                        const isArrow = element.shape === 'arrow';
+                        const isStar = element.shape === 'star';
+                        const isLineShape = element.shape === 'line';
+
                         const shapeStyle = {
                           ...baseStyle,
                           backgroundColor: element.color || '#3b82f6',
-                          borderRadius: element.shape === 'circle' ? '50%' : '18px',
+                          border: resolvedBorder,
+                          borderRadius: isCircle ? '50%' : 0,
                           clipPath:
-                            element.shape === 'triangle'
+                            isTriangle
                               ? 'polygon(50% 0%, 0% 100%, 100% 100%)'
-                              : element.shape === 'arrow'
+                              : isArrow
                               ? 'polygon(0% 20%, 60% 20%, 60% 0%, 100% 50%, 60% 100%, 60% 80%, 0% 80%)'
-                              : element.shape === 'star'
+                              : isStar
                               ? 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)'
-                              : 'none'
+                              : 'none',
+                          opacity: element.opacity ?? 1
                         };
+
+                        if (isLineShape) {
+                          shapeStyle.borderRadius = '999px';
+                        }
 
                         return (
                           <div className="shape-element-content" style={shapeStyle}>
@@ -2592,8 +2653,17 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
                       }
 
                       if (element.type === 'image') {
+                        const borderEnabled = element.borderEnabled !== false;
+                        const borderWidth = Number.isFinite(element.borderWidth) ? element.borderWidth : 0;
+                        const borderStyle = element.borderStyle || 'solid';
+                        const borderColor = element.borderColor || '#ffffff';
+                        const resolvedBorder =
+                          borderEnabled && borderWidth > 0
+                            ? `${borderWidth}px ${borderStyle} ${borderColor}`
+                            : 'none';
+
                         return (
-                          <div className="image-element-content">
+                          <div className="image-element-content" style={{ border: resolvedBorder }}>
                             <ImageComponent
                               element={element}
                               onUpdate={(updatedElement) => updateElement(element.id, updatedElement)}
@@ -2663,8 +2733,10 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
                       editor={textEditors[selectedElement.id]}
                       onUpdate={updateElement}
                       onDelete={deleteElement}
+                      onOpenMore={(element) => openFormatPanel('text', element.id)}
                       position={{ x: toolbarPosition.x, y: toolbarPosition.y }}
                       isVisible
+                      showMoreButton={true}
                     />
                   )}
 
@@ -2674,6 +2746,10 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
                       onUpdate={updateElement}
                       onDelete={deleteElement}
                       onDuplicate={() => duplicateElement(activeShapeElement.id)}
+                      onOpenMore={(element) => {
+                        setSelectedElement(element);
+                        openFormatPanel('shape', element.id);
+                      }}
                       position={shapeToolbarPosition}
                       isVisible
                       onDismiss={() => {
@@ -2708,8 +2784,8 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
                           }
                         });
                       }}
-                      onEditData={() => setChartEditorId(selectedElement.id)}
                       onDelete={() => deleteElement(selectedElement.id)}
+                      onOpenMore={(element) => openFormatPanel('chart', element.id)}
                       onDismiss={() => {
                         setChartToolbarPosition(null);
                         setHoveredElement(null);
@@ -2725,6 +2801,7 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
                       onDuplicate={() => duplicateElement(selectedElement.id)}
                       onFlip={handleFlipImage}
                       onDelete={() => deleteElement(selectedElement.id)}
+                      onOpenMore={(element) => openFormatPanel('image', element.id)}
                       onDismiss={() => {
                         setImageToolbarPosition(null);
                         setHoveredElement(null);
@@ -2742,28 +2819,60 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
                   )}
 
                   </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    ref={imageInputRef}
-                    style={{ display: 'none' }}
-                    onChange={handleImageFileChange}
-                  />
                 </div>
-
-                {chartEditorElement && (
-                  <ChartDataEditor
-                    isOpen
-                    data={chartEditorElement.chartData || createDefaultChartData(chartEditorElement.chartType || 'bar')}
-                    chartTypeLabels={chartTypeLabels}
-                    palette={CHART_COLOR_PALETTE}
-                    onClose={closeChartEditor}
-                    onSave={handleChartEditorSave}
-                    onChange={handleChartEditorChange}
-                  />
-                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={imageInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleImageFileChange}
+                />
               </div>
+              <RightFormatPanel
+                isOpen={isFormatPanelOpen}
+                type={activeFormatPanel}
+                element={formatPanelElement}
+                chartPalette={CHART_COLOR_PALETTE}
+                chartTypeLabels={chartTypeLabels}
+                editor={formatPanelEditor}
+                onClose={closeFormatPanel}
+                onChangeShapeOpacity={(opacityValue) => {
+                  const targetId = formatPanelElement?.id;
+                  if (!targetId) {
+                    return;
+                  }
+                  const clamped = Math.min(1, Math.max(0, opacityValue));
+                  updateElement(targetId, { opacity: clamped });
+                }}
+                onChangeElementSettings={(patch) => {
+                  const targetId = formatPanelElement?.id;
+                  if (!targetId || !patch || typeof patch !== 'object') {
+                    return;
+                  }
+                  updateElement(targetId, patch);
+                }}
+                onRequestEdit={() => {
+                  if (!formatPanelElement) {
+                    return;
+                  }
+                  if (formatPanelElement.type === 'text') {
+                    focusTextElement(formatPanelElement.id);
+                  } else if (formatPanelElement.type === 'image') {
+                    setEditingImage(formatPanelElement.id);
+                  } else if (formatPanelElement.type === 'shape') {
+                    setSelectedElement(formatPanelElement);
+                    updateShapeToolbarPosition(formatPanelElement.id);
+                  }
+                }}
+                onRequestDelete={() => {
+                  if (formatPanelElement?.id) {
+                    deleteElement(formatPanelElement.id);
+                  }
+                }}
+                onRequestReplace={handleRequestReplaceImage}
+              />
             </main>
+
           </div>
         ) : (
           <div className="slideshow">
@@ -2792,96 +2901,116 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
                 </button>
               </div>
             </div>
-            
+
             <div className="slideshow-content">
               <div className="slide" style={{ backgroundColor: currentSlide.background?.color || DEFAULT_BACKGROUND }}>
                 {currentSlide.content?.map((element) => {
                   if (element.type === 'text') {
+                    const commonStyle = {
+                      position: 'absolute',
+                      left: `${element.x}px`,
+                      top: `${element.y}px`,
+                      width: `${element.width}px`,
+                      minHeight: `${element.height}px`,
+                      padding: '8px',
+                      fontSize: `${element.fontSize}px`,
+                      color: element.color,
+                      fontFamily: element.fontFamily,
+                      textAlign: element.textAlign || 'left',
+                      fontWeight: element.bold ? 'bold' : element.fontWeight || 'normal',
+                      fontStyle: element.italic ? 'italic' : 'normal',
+                      textDecoration: element.underline ? 'underline' : 'none',
+                      lineHeight: element.lineHeight || '1.4',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      display: 'block',
+                      backgroundColor: 'transparent'
+                    };
+
+                    const htmlContent = element.text && element.text.trim().length > 0 ? element.text : null;
+
+                    if (htmlContent) {
+                      return (
+                        <div
+                          key={element.id}
+                          className="slide-element"
+                          style={commonStyle}
+                          dangerouslySetInnerHTML={{ __html: htmlContent }}
+                        />
+                      );
+                    }
+
                     return (
                       <div
                         key={element.id}
                         className="slide-element"
-                        style={{
-                          position: 'absolute',
-                          left: `${element.x}px`,
-                          top: `${element.y}px`,
-                          width: `${element.width}px`,
-                          minHeight: `${element.height}px`,
-                          padding: '8px',
-                          fontSize: `${element.fontSize}px`,
-                          color: element.color,
-                          fontFamily: element.fontFamily,
-                          textAlign: element.textAlign || 'left',
-                          fontWeight: element.bold ? 'bold' : element.fontWeight || 'normal',
-                          fontStyle: element.italic ? 'italic' : 'normal',
-                          textDecoration: element.underline ? 'underline' : 'none',
-                          lineHeight: element.lineHeight || '1.4',
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                          display: 'block',
-                          backgroundColor: 'transparent'
-                        }}
-                        dangerouslySetInnerHTML={{ __html: element.text || '' }}
-                      />
+                        style={commonStyle}
+                      >
+                        {element.plainText || ''}
+                      </div>
                     );
-                  } else if (element.type === 'shape') {
-                    const getShapeStyle = () => {
-                      const baseStyle = {
-                        position: 'absolute',
-                        left: `${element.x}px`,
-                        top: `${element.y}px`,
-                        width: `${element.width}px`,
-                        height: `${element.height}px`,
-                        backgroundColor: element.color || '#3b82f6',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#ffffff',
-                        fontSize: '14px',
-                        fontWeight: '500'
-                      };
+                  }
 
-                      switch (element.shape) {
-                        case 'circle':
-                          return { ...baseStyle, borderRadius: '50%' };
-                        case 'triangle':
-                          return {
-                            ...baseStyle,
-                            clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'
-                          };
-                        case 'arrow':
-                          return {
-                            ...baseStyle,
-                            clipPath: 'polygon(0% 20%, 60% 20%, 60% 0%, 100% 50%, 60% 100%, 60% 80%, 0% 80%)'
-                          };
-                        case 'star':
-                          return {
-                            ...baseStyle,
-                            clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)'
-                          };
-                        case 'line':
-                          return {
-                            ...baseStyle,
-                            backgroundColor: element.color || '#ffffff',
-                            borderRadius: '0',
+                  if (element.type === 'shape') {
+                    if (element.shape === 'line') {
+                      return (
+                        <div
+                          key={element.id}
+                          className="slide-element"
+                          style={{
+                            position: 'absolute',
+                            left: `${element.x}px`,
+                            top: `${element.y}px`,
+                            width: `${element.width}px`,
                             height: `${element.strokeWidth || 2}px`,
-                            width: `${element.width}px`
-                          };
-                        default:
-                          return { ...baseStyle, borderRadius: '8px' };
-                      }
+                            backgroundColor: element.color || '#ffffff'
+                          }}
+                        />
+                      );
+                    }
+
+                    const baseShapeStyle = {
+                      position: 'absolute',
+                      left: `${element.x}px`,
+                      top: `${element.y}px`,
+                      width: `${element.width}px`,
+                      height: `${element.height}px`,
+                      backgroundColor: element.color || '#3b82f6',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#ffffff',
+                      fontSize: '14px',
+                      fontWeight: '500'
                     };
 
+                    const shapeStyle = { ...baseShapeStyle };
+                    switch (element.shape) {
+                      case 'circle':
+                        shapeStyle.borderRadius = '50%';
+                        break;
+                      case 'triangle':
+                        shapeStyle.clipPath = 'polygon(50% 0%, 0% 100%, 100% 100%)';
+                        break;
+                      case 'arrow':
+                        shapeStyle.clipPath = 'polygon(0% 20%, 60% 20%, 60% 0%, 100% 50%, 60% 100%, 60% 80%, 0% 80%)';
+                        break;
+                      case 'star':
+                        shapeStyle.clipPath = 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)';
+                        break;
+                      default:
+                        shapeStyle.borderRadius = '8px';
+                        break;
+                    }
+
                     return (
-                      <div 
-                        key={element.id}
-                        className="slide-element"
-                        style={getShapeStyle()}
-                      >
+                      <div key={element.id} className="slide-element" style={shapeStyle}>
                         {element.text && element.shape !== 'line' && element.text}
                       </div>
                     );
-                  } else if (element.type === 'chart') {
+                  }
+
+                  if (element.type === 'chart') {
                     const chartData = element.chartData || createDefaultChartData(element.chartType || 'bar');
                     return (
                       <div
@@ -2914,7 +3043,9 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
                         />
                       </div>
                     );
-                  } else if (element.type === 'image' && element.src) {
+                  }
+
+                  if (element.type === 'image' && element.src) {
                     return (
                       <div
                         key={element.id}
@@ -2945,6 +3076,7 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
                       </div>
                     );
                   }
+
                   return null;
                 })}
               </div>
@@ -2952,16 +3084,16 @@ const PresentationApp = ({ onExit, initialPresentationId }) => {
 
             <div className="slideshow-footer">
               <div className="slide-navigation">
-                <button 
+                <button
                   className="nav-btn"
-                  onClick={() => setCurrentSlideIndex(prev => Math.max(0, prev - 1))}
+                  onClick={() => setCurrentSlideIndex((prev) => Math.max(0, prev - 1))}
                   disabled={currentSlideIndex === 0}
                 >
                   ⬅️ Previous
                 </button>
-                <button 
+                <button
                   className="nav-btn"
-                  onClick={() => setCurrentSlideIndex(prev => Math.min(slides.length - 1, prev + 1))}
+                  onClick={() => setCurrentSlideIndex((prev) => Math.min(slides.length - 1, prev + 1))}
                   disabled={currentSlideIndex === slides.length - 1}
                 >
                   Next ➡️

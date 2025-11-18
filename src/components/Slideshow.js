@@ -433,7 +433,15 @@ const Slideshow = ({ slides, currentSlide, setCurrentSlide, onExit }) => {
                         width: '100%',
                         height: '100%',
                         backgroundColor: element.backgroundColor || '#000000',
-                        borderRadius: element.shape === 'circle' ? '50%' : '4px',
+                        borderRadius: element.shape === 'circle' ? '50%' : 0,
+                        clipPath:
+                          element.shape === 'triangle'
+                            ? 'polygon(50% 0%, 0% 100%, 100% 100%)'
+                            : element.shape === 'arrow'
+                            ? 'polygon(0% 20%, 60% 20%, 60% 0%, 100% 50%, 60% 100%, 60% 80%, 0% 80%)'
+                            : element.shape === 'star'
+                            ? 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)'
+                            : 'none',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',

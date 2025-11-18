@@ -6,10 +6,140 @@ import TextStyle from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
+import BulletList from '@tiptap/extension-bullet-list';
+import OrderedList from '@tiptap/extension-ordered-list';
 import { Extension } from '@tiptap/core';
 import './RichTextEditor.css';
 
 const EMPTY_PARAGRAPH = '<p></p>';
+
+// Allow custom class attributes on list nodes for styling
+const CustomBulletList = BulletList.extend({
+  addAttributes() {
+    return {
+      class: {
+        default: null,
+        parseHTML: element => element.getAttribute('class') || null,
+        renderHTML: attributes => ({
+          class: attributes.class || null
+        })
+      }
+    };
+  }
+});
+
+const CustomOrderedList = OrderedList.extend({
+  addAttributes() {
+    return {
+      class: {
+        default: null,
+        parseHTML: element => element.getAttribute('class') || null,
+        renderHTML: attributes => ({
+          class: attributes.class || null
+        })
+      }
+    };
+  }
+});
+
+const LineHeight = Extension.create({
+  name: 'lineHeight',
+
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['paragraph', 'heading', 'bulletList', 'orderedList'],
+        attributes: {
+          lineHeight: {
+            default: null,
+            parseHTML: (element) => element.style.lineHeight || null,
+            renderHTML: (attributes) => {
+              if (!attributes.lineHeight) {
+                return {};
+              }
+              return { style: `line-height: ${attributes.lineHeight}` };
+            }
+          }
+        }
+      }
+    ];
+  },
+
+  addCommands() {
+    return {
+      setLineHeight:
+        (value) =>
+        ({ state, dispatch }) => {
+          const { from, to } = state.selection;
+          const tr = state.tr;
+          let changed = false;
+          const targetTypes = new Set(['paragraph', 'heading', 'bulletList', 'orderedList']);
+
+          state.doc.nodesBetween(from, to, (node, pos) => {
+            if (!targetTypes.has(node.type.name)) {
+              return;
+            }
+
+            const attrs = {
+              ...node.attrs,
+              lineHeight: value
+            };
+
+            if (node.attrs.lineHeight === value) {
+              return;
+            }
+
+            tr.setNodeMarkup(pos, undefined, attrs, node.marks);
+            changed = true;
+          });
+
+          if (changed) {
+            dispatch?.(tr);
+            return true;
+          }
+          return false;
+        }
+    };
+  }
+});
+
+const TextCase = Extension.create({
+  name: 'textCase',
+
+  addCommands() {
+    const transformSelection = (transformer) => ({ state, dispatch }) => {
+      const { from, to } = state.selection;
+      if (from === to) {
+        return false;
+      }
+
+      const tr = state.tr;
+      state.doc.nodesBetween(from, to, (node, pos) => {
+        if (!node.isText) {
+          return;
+        }
+        const start = Math.max(from, pos);
+        const end = Math.min(to, pos + node.nodeSize);
+        const transformed = transformer(node.text?.slice(start - pos, end - pos) || '');
+        tr.replaceRangeWith(start, end, state.schema.text(transformed, node.marks));
+      });
+      if (tr.docChanged) {
+        dispatch?.(tr);
+        return true;
+      }
+      return false;
+    };
+
+    return {
+      toUpperCase: () => transformSelection((value) => value.toUpperCase()),
+      toLowerCase: () => transformSelection((value) => value.toLowerCase()),
+      toTitleCase: () =>
+        transformSelection((value) =>
+          value.replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        )
+    };
+  }
+});
 
 // Custom FontSize extension
 const FontSize = Extension.create({
@@ -129,6 +259,8 @@ const RichTextEditor = React.memo(({
         TextStyle,
         FontSize,
         FontFamily,
+        LineHeight,
+        TextCase,
         Underline,
         TextAlign.configure({
           defaultAlignment: 'left',
@@ -136,9 +268,11 @@ const RichTextEditor = React.memo(({
         }),
         StarterKit.configure({
           heading: { levels: [1, 2, 3] },
-          bulletList: { keepMarks: true, keepAttributes: false },
-          orderedList: { keepMarks: true, keepAttributes: false }
+          bulletList: false,
+          orderedList: false
         }),
+        CustomBulletList.configure({ keepMarks: true, keepAttributes: true }),
+        CustomOrderedList.configure({ keepMarks: true, keepAttributes: true }),
         Placeholder.configure({
           placeholder,
           includeChildren: true
@@ -251,8 +385,7 @@ const RichTextEditor = React.memo(({
       fontWeight: element.bold ? 700 : (element.fontWeight || 400),
       fontStyle: element.italic ? 'italic' : 'normal',
       textDecoration: decorations.join(' ') || 'none',
-      lineHeight: element.lineHeight ? String(element.lineHeight) : '1.3',
-      backgroundColor: element.backgroundColor || 'transparent'
+      lineHeight: element.lineHeight ? String(element.lineHeight) : '1.3'
     };
   }, [element, textScale]);
 

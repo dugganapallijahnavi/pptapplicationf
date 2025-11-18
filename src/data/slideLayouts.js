@@ -18,7 +18,7 @@ const createTextElement = (text, overrides = {}) => ({
   x: 160,
   y: 140,
   width: 520,
-  fontSize: 40,
+  fontSize: 32,
   fontFamily: '"Playfair Display", serif',
   fontWeight: 500,
   textStyle: 'title',
@@ -37,7 +37,7 @@ const createTextElement = (text, overrides = {}) => ({
 
 const createParagraphElement = (text, overrides = {}) =>
   createTextElement(text, {
-    fontSize: 20,
+    fontSize: 16,
     fontFamily: 'Georgia, serif',
     fontWeight: 400,
     textStyle: 'body',
@@ -48,7 +48,7 @@ const createParagraphElement = (text, overrides = {}) =>
 
 const createCaptionElement = (text, overrides = {}) =>
   createParagraphElement(text, {
-    fontSize: 18,
+    fontSize: 14,
     color: '#374151',
     ...overrides
   });
@@ -90,7 +90,7 @@ export const SLIDE_LAYOUTS = [
         x: 120,
         y: 150,
         width: 720,
-        fontSize: 52,
+        fontSize: 36,
         fontWeight: 600,
         textStyle: 'heading'
       }),
@@ -98,7 +98,7 @@ export const SLIDE_LAYOUTS = [
         x: 120,
         y: 320,
         width: 720,
-        fontSize: 22,
+        fontSize: 16,
         color: '#374151'
       })
     ]
@@ -127,7 +127,7 @@ export const SLIDE_LAYOUTS = [
     createContent: () => [
       createTextElement('Introduce your main idea', {
         y: 140,
-        fontSize: 44,
+        fontSize: 30,
         fontWeight: 600
       }),
       createParagraphElement(
@@ -135,7 +135,7 @@ export const SLIDE_LAYOUTS = [
         {
           y: 300,
           width: 520,
-          fontSize: 22,
+          fontSize: 16,
           color: '#374151'
         }
       )
@@ -172,7 +172,7 @@ export const SLIDE_LAYOUTS = [
     createContent: () => [
       createTextElement('Compare two ideas side-by-side', {
         y: 130,
-        fontSize: 42
+        fontSize: 28
       }),
       createParagraphElement('Use this column for the first key point.', {
         y: 240,

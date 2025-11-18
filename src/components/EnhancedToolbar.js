@@ -39,7 +39,15 @@ const EnhancedToolbar = ({
   designOptions = [],
   activeDesignId,
   onSelectDesign,
-  onFilesMenuToggle
+  onFilesMenuToggle,
+  zoomLabel,
+  onZoomIn,
+  onZoomOut,
+  onZoomReset,
+  onZoomSelect,
+  zoomPresets = [],
+  zoomCanZoomIn = true,
+  zoomCanZoomOut = true
 }) => {
   const [activePanel, setActivePanel] = useState(null);
   const [isDesignPanelOpen, setIsDesignPanelOpen] = useState(false);
@@ -51,6 +59,8 @@ const EnhancedToolbar = ({
   const [isFilesMenuOpen, setIsFilesMenuOpen] = useState(false);
   const insertButtonRefs = useRef({});
   const [panelPosition, setPanelPosition] = useState({ left: 0 });
+  const [isZoomMenuOpen, setIsZoomMenuOpen] = useState(false);
+  const zoomMenuRef = useRef(null);
 
   const updatePanelPosition = useCallback((type) => {
     const buttonNode = insertButtonRefs.current?.[type];
@@ -83,6 +93,7 @@ const EnhancedToolbar = ({
       const panelNode = panelRef.current;
       const designNode = designPanelRef.current;
       const filesNode = filesMenuRef.current;
+      const zoomNode = zoomMenuRef.current;
       if (
         toolbarNode &&
         panelNode &&
@@ -105,6 +116,10 @@ const EnhancedToolbar = ({
       if (filesNode && !filesNode.contains(event.target)) {
         setIsFilesMenuOpen(false);
         onFilesMenuToggle?.(false);
+      }
+
+      if (zoomNode && !zoomNode.contains(event.target)) {
+        setIsZoomMenuOpen(false);
       }
     };
 
@@ -338,6 +353,69 @@ const EnhancedToolbar = ({
       </div>
 
       <div className="toolbar-right">
+        <div className="toolbar-zoom-controls" role="group" aria-label="Zoom controls">
+          <button
+            type="button"
+            className="toolbar-button icon-button zoom-control"
+            onClick={onZoomOut}
+            disabled={!zoomCanZoomOut}
+            title="Zoom out"
+          >
+            <span className="button-icon">−</span>
+          </button>
+          <button
+            type="button"
+            className="toolbar-button zoom-display"
+            onClick={() => setIsZoomMenuOpen((prev) => !prev)}
+            onDoubleClick={() => {
+              onZoomReset?.();
+              setIsZoomMenuOpen(false);
+            }}
+            title="Click to choose zoom, double-click to reset"
+          >
+            <span className="button-text zoom-label">{zoomLabel}</span>
+            <span className="zoom-caret" aria-hidden="true">▾</span>
+          </button>
+          <button
+            type="button"
+            className="toolbar-button icon-button zoom-control"
+            onClick={onZoomIn}
+            disabled={!zoomCanZoomIn}
+            title="Zoom in"
+          >
+            <span className="button-icon">+</span>
+          </button>
+
+          {isZoomMenuOpen && (
+            <div className="zoom-menu" ref={zoomMenuRef} role="listbox">
+              {zoomPresets.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className={`zoom-menu-item${zoomLabel === `${Math.round(preset * 100)}%` ? ' is-active' : ''}`}
+                  role="option"
+                  aria-selected={zoomLabel === `${Math.round(preset * 100)}%`}
+                  onClick={() => {
+                    onZoomSelect?.(preset);
+                    setIsZoomMenuOpen(false);
+                  }}
+                >
+                  {`${Math.round(preset * 100)}%`}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="zoom-menu-item"
+                onClick={() => {
+                  onZoomReset?.();
+                  setIsZoomMenuOpen(false);
+                }}
+              >
+                Fit to screen
+              </button>
+            </div>
+          )}
+        </div>
         <input
           type="text"
           className="filename-input"

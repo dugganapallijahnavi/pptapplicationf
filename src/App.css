@@ -12,6 +12,7 @@
   --color-interactive-hover: #e2e8f0;
   --color-shadow: rgba(15, 23, 42, 0.08);
   --color-overlay: rgba(15, 23, 42, 0.45);
+  --text-panel-width: clamp(260px, 22vw, 360px);
 }
 
 html {

@@ -7,9 +7,9 @@
 .shape-toolbar-inline {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 10px;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.1);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
@@ -18,13 +18,13 @@
 }
 
 .shape-toolbar-duplicate {
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 8px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 6px;
   border: 1px solid rgba(0, 0, 0, 0.1);
   background: #ffffff;
   color: #1a1a1a;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
@@ -45,14 +45,14 @@
 }
 
 .shape-select {
-  height: 30px;
-  border-radius: 8px;
+  height: 24px;
+  border-radius: 6px;
   border: 1px solid rgba(148, 163, 184, 0.45);
   background: #ffffff;
   color: #1f2937;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 500;
-  padding: 0 12px;
+  padding: 0 8px;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -63,9 +63,9 @@
 }
 
 .shape-color-picker {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
   border: 1px solid rgba(148, 163, 184, 0.5);
   padding: 0;
   background: #ffffff;
@@ -77,18 +77,18 @@
 }
 
 .shape-color-picker::-webkit-color-swatch {
-  border-radius: 8px;
+  border-radius: 6px;
   border: none;
 }
 
 .shape-toolbar-delete {
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 8px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 6px;
   border: 1px solid rgba(0, 0, 0, 0.1);
   background: #ffffff;
   color: #1a1a1a;
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.03em;
   font-weight: 600;
   cursor: pointer;
@@ -99,6 +99,33 @@
   border-color: rgba(0, 0, 0, 0.15);
   background: #e6e4e4;
   color: #1a1a1a;
+}
+
+.shape-toolbar-more {
+  height: 22px;
+  width: 22px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  color: #1a1a1a;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.shape-toolbar-more:hover,
+.shape-toolbar-more:focus-visible {
+  border-color: rgba(0, 0, 0, 0.15);
+  background: #e6e4e4;
+  transform: translateY(-1px);
+}
+
+.shape-toolbar-more:active {
+  transform: translateY(0);
 }
 
 @media (max-width: 560px) {

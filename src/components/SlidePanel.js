@@ -439,7 +439,10 @@ const SlidePanel = ({
 
                       if (element.shape === 'circle') {
                         commonStyle.borderRadius = '50%';
+                      } else if (element.shape === 'rectangle') {
+                        commonStyle.borderRadius = 0;
                       } else if (element.shape === 'triangle') {
+                        commonStyle.borderRadius = 0;
                         commonStyle.clipPath = 'polygon(50% 0%, 0% 100%, 100% 100%)';
                       } else if (element.shape === 'star') {
                         commonStyle.clipPath =

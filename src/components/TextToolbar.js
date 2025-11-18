@@ -5,21 +5,21 @@ const STYLE_PRESETS = [
   {
     key: 'heading',
     label: 'Heading',
-    fontSize: 56,
+    fontSize: 44,
     fontFamily: 'Playfair Display, serif',
     fontWeight: 700
   },
   {
     key: 'title',
     label: 'Title',
-    fontSize: 40,
+    fontSize: 32,
     fontFamily: 'Playfair Display, serif',
     fontWeight: 600
   },
   {
     key: 'body',
     label: 'Paragraph',
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: 'Inter, sans-serif',
     fontWeight: 400
   }
@@ -75,18 +75,18 @@ const toHex = (value) => {
 
 const getScaleForWidth = (width) => {
   if (width <= 480) {
-    return 0.58;
+    return 0.55;
   }
   if (width <= 640) {
-    return 0.64;
+    return 0.6;
   }
   if (width <= 900) {
-    return 0.72;
+    return 0.68;
   }
   if (width <= 1200) {
-    return 0.82;
+    return 0.76;
   }
-  return 1;
+  return 0.84;
 };
 
 const getResponsivePreset = (key, width) => {
@@ -104,8 +104,10 @@ const TextToolbar = ({
   editor,
   onUpdate,
   onDelete,
+  onOpenMore,
   position = { x: 0, y: 0 },
-  isVisible = true
+  isVisible = true,
+  showMoreButton = true
 }) => {
   const [presetKey, setPresetKey] = useState('body');
   const [fontSize, setFontSize] = useState(20);
@@ -594,6 +596,25 @@ const TextToolbar = ({
             Delete
           </button>
         </div>
+
+        {showMoreButton && (
+          <div className="toolbar-item more">
+            <div className="toolbar-tooltip">
+              <button
+                type="button"
+                className="toolbar-more-button"
+                onClick={() => {
+                  closeMenus();
+                  onOpenMore?.(element);
+                }}
+                aria-label="More actions"
+              >
+                ⋮
+              </button>
+              <span className="toolbar-tooltip__bubble" role="status">More actions</span>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

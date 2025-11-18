@@ -13,9 +13,9 @@ const ChartToolbar = ({
   position = { x: 0, y: 0 },
   isVisible = false,
   onChangeType,
-  onEditData,
   onDelete,
   onDuplicate,
+  onOpenMore,
   onDismiss
 }) => {
   const [chartType, setChartType] = useState('bar');
@@ -82,18 +82,6 @@ const ChartToolbar = ({
 
         <button
           type="button"
-          className="chart-toolbar-button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onEditData?.(element.id);
-          }}
-          onMouseDown={(event) => event.stopPropagation()}
-        >
-          Edit Data
-        </button>
-
-        <button
-          type="button"
           className="chart-toolbar-button duplicate"
           onClick={(event) => {
             event.stopPropagation();
@@ -116,6 +104,22 @@ const ChartToolbar = ({
         >
           Delete
         </button>
+
+        <div className="toolbar-tooltip">
+          <button
+            type="button"
+            className="chart-toolbar-button more"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenMore?.(element);
+            }}
+            onMouseDown={(event) => event.stopPropagation()}
+            aria-label="More actions"
+          >
+            ⋮
+          </button>
+          <span className="toolbar-tooltip__bubble">More actions</span>
+        </div>
       </div>
     </div>
   );

@@ -9,13 +9,13 @@
 .image-toolbar-inline {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 10px;
-  padding: 8px 12px;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.15), 0 2px 6px rgba(15, 23, 42, 0.1);
-  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  padding: 6px 8px;
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.12), 0 1px 4px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(6px);
 }
 
 .image-toolbar-flip-group {
@@ -28,9 +28,9 @@
   background: #ffffff;
   color: #1a1a1a;
   border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 16px;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -51,15 +51,15 @@
 
 .image-toolbar-flip-menu {
   position: absolute;
-  top: 42px;
+  top: 34px;
   left: 50%;
   transform: translateX(-50%);
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
-  padding: 6px 0;
-  min-width: 140px;
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.15);
+  padding: 4px 0;
+  min-width: 120px;
   display: flex;
   flex-direction: column;
   z-index: 1200;
@@ -68,9 +68,9 @@
 .image-toolbar-flip-menu button {
   background: transparent;
   border: none;
-  padding: 8px 14px;
+  padding: 6px 12px;
   text-align: left;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: #1a1a1a;
   cursor: pointer;
@@ -86,9 +86,9 @@
   background: #ffffff;
   color: #1a1a1a;
   border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 18px;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -115,9 +115,9 @@
   background: #ffffff;
   color: #1a1a1a;
   border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 13px;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -135,4 +135,46 @@
   background: #cfcece;
   transform: translateY(0);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.toolbar-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.toolbar-tooltip__bubble {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translate(-50%, 0);
+  background: rgba(15, 23, 42, 0.92);
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+}
+
+.toolbar-tooltip__bubble::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  background: inherit;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+}
+
+.toolbar-tooltip:hover .toolbar-tooltip__bubble,
+.toolbar-tooltip:focus-within .toolbar-tooltip__bubble {
+  opacity: 1;
+  transform: translate(-50%, 2px);
 }

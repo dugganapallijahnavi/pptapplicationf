@@ -35,6 +35,7 @@ const ShapeToolbar = ({
   onUpdate,
   onDelete,
   onDuplicate,
+  onOpenMore,
   position,
   isVisible = false,
   onDismiss
@@ -67,6 +68,11 @@ const ShapeToolbar = ({
 
   const handleShapeSelect = (shape) => {
     setShapeKey(shape);
+
+    if (!element) {
+      return;
+    }
+
     applyUpdate({ shape });
   };
 
@@ -140,9 +146,26 @@ const ShapeToolbar = ({
           type="button"
           className="shape-toolbar-delete"
           onClick={() => onDelete?.(element.id)}
+          onMouseDown={(event) => event.stopPropagation()}
         >
           Delete
         </button>
+
+        <div className="toolbar-tooltip">
+          <button
+            type="button"
+            className="shape-toolbar-more"
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenMore?.(element);
+            }}
+            aria-label="More actions"
+          >
+            ⋮
+          </button>
+          <span className="toolbar-tooltip__bubble" role="status">More actions</span>
+        </div>
       </div>
     </div>
   );

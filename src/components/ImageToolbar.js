@@ -6,6 +6,7 @@ const ImageToolbar = ({
   onDelete,
   onDuplicate,
   onFlip,
+  onOpenMore,
   position,
   isVisible = false,
   onDismiss
@@ -113,6 +114,22 @@ const ImageToolbar = ({
         >
           Delete
         </button>
+
+        <div className="toolbar-tooltip">
+          <button
+            type="button"
+            className="image-toolbar-more"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenMore?.(element);
+            }}
+            onMouseDown={(event) => event.stopPropagation()}
+            aria-label="More actions"
+          >
+            ⋮
+          </button>
+          <span className="toolbar-tooltip__bubble" role="status">More actions</span>
+        </div>
       </div>
     </div>
   );

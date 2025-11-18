@@ -89,6 +89,56 @@
   padding-left: 1.2rem;
 }
 
+.tiptap-editor-content ul[class^='bullet-'] {
+  list-style: none;
+  padding-left: 1.6rem;
+}
+
+.tiptap-editor-content ul[class^='bullet-'] > li {
+  position: relative;
+  padding-left: 0.6rem;
+}
+
+.tiptap-editor-content ul.bullet-dots > li::before {
+  content: '•';
+}
+
+.tiptap-editor-content ul.bullet-hollow > li::before {
+  content: '◦';
+}
+
+.tiptap-editor-content ul.bullet-squares > li::before {
+  content: '▪';
+}
+
+.tiptap-editor-content ul.bullet-arrows > li::before {
+  content: '➤';
+}
+
+.tiptap-editor-content ul[class^='bullet-'] > li::before {
+  position: absolute;
+  left: -1.1rem;
+  color: currentColor;
+  font-weight: 600;
+  font-size: 0.9em;
+}
+
+.tiptap-editor-content ol.number-arabic {
+  list-style-type: decimal;
+}
+
+.tiptap-editor-content ol.number-roman-upper {
+  list-style-type: upper-roman;
+}
+
+.tiptap-editor-content ol.number-alpha-lower {
+  list-style-type: lower-alpha;
+}
+
+.tiptap-editor-content ol.number-roman-lower {
+  list-style-type: lower-roman;
+}
+
 .tiptap-bubble-menu {
   display: flex;
   background: rgba(12, 12, 12, 0.92);

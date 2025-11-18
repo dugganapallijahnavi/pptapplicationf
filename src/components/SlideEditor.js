@@ -139,9 +139,9 @@ const SlideEditor = ({ slide, updateSlide, insertAction, onInsertActionHandled }
   }, [focusTextElement, slide, updateSlide]);
 
   const addShape = useCallback((x,y)=>{
-    const newShape = { id: Date.now(), type:'shape', shape:'rectangle',
-      x: Math.max(32, x-60), y: Math.max(32, y-30), width:120, height:60,
-      color:'#1a73e8', borderColor:'#1a73e8', borderWidth:2
+    const newShape = { id: Date.now(), type:'shape', shape:'circle',
+      x: Math.max(32, x-60), y: Math.max(32, y-60), width:120, height:120,
+      color:'#1a73e8', borderColor:'#1a73e8', borderWidth:2, opacity: 1
     };
     updateSlide({ ...slide, content: [...slide.content, newShape] });
     setSelectedElementId(newShape.id); setIsAddingShape(false); setIsAddingText(false); setIsAddingChart(false);
@@ -328,15 +328,51 @@ const SlideEditor = ({ slide, updateSlide, insertAction, onInsertActionHandled }
     }
 
     if (el.type === 'shape'){
+      const borderEnabled = el.borderEnabled !== false;
+      const borderWidth = Number.isFinite(el.borderWidth) ? Math.max(0, el.borderWidth) : 0;
+      const borderStyle = el.borderStyle || 'solid';
+      const borderColor = el.borderColor || el.color || '#3b82f6';
+      const resolvedBorder = borderEnabled && borderWidth > 0 ? `${borderWidth}px ${borderStyle} ${borderColor}` : 'none';
+
+      const baseShapeStyle = {
+        backgroundColor: el.color || '#3b82f6',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#ffffff',
+        fontSize: '14px',
+        fontWeight: 500,
+        overflow: 'hidden',
+        border: resolvedBorder
+      };
+
+      if (el.shape === 'circle') {
+        baseShapeStyle.borderRadius = '50%';
+        baseShapeStyle.clipPath = 'none';
+      } else if (el.shape === 'rectangle') {
+        baseShapeStyle.borderRadius = 0;
+        baseShapeStyle.clipPath = 'none';
+      } else if (el.shape === 'triangle') {
+        baseShapeStyle.borderRadius = 0;
+        baseShapeStyle.clipPath = 'polygon(50% 0%, 0% 100%, 100% 100%)';
+      } else if (el.shape === 'arrow') {
+        baseShapeStyle.borderRadius = 0;
+        baseShapeStyle.clipPath = 'polygon(0% 20%, 60% 20%, 60% 0%, 100% 50%, 60% 100%, 60% 80%, 0% 80%)';
+      } else if (el.shape === 'star') {
+        baseShapeStyle.borderRadius = 0;
+        baseShapeStyle.clipPath = 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)';
+      } else if (el.shape === 'line') {
+        baseShapeStyle.height = `${el.strokeWidth || 2}px`;
+        baseShapeStyle.borderRadius = '999px';
+      }
+
       return (
-        <div className={`shape ${el.id === selectedElementId ? 'selected' : ''}`}
-             style={{
-               backgroundColor: el.backgroundColor || '#000',
-               borderRadius: el.shape === 'rectangle' ? '4px' : '50%',
-               width:'100%', height:'100%',
-               display:'flex', alignItems:'center', justifyContent:'center',
-               color: el.color || '#fff', fontSize:'14px', fontWeight:500, overflow:'hidden'
-             }}>
+        <div
+          className={`shape ${el.id === selectedElementId ? 'selected' : ''}`}
+          style={baseShapeStyle}
+        >
           {el.text || ''}
         </div>
       );
@@ -467,7 +503,6 @@ const SlideEditor = ({ slide, updateSlide, insertAction, onInsertActionHandled }
           onChangeType={(type) => handleChartTypeChange(selectedElement.id, type)}
           onChangeTitle={(title) => handleChartTitleChange(selectedElement.id, title)}
           onChangeAccentColor={(color) => handleChartAccentChange(selectedElement.id, color)}
-          onEditData={() => handleChartEditData(selectedElement.id)}
           onDelete={() => deleteElement(selectedElement.id)}
           onDismiss={() => setChartToolbarPosition(null)}
         />
